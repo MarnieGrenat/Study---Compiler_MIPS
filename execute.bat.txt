@@ -1,0 +1,7 @@
+@echo off
+:again
+pause
+
+esptool\esptool.exe --chip esp32 --port COM18 -b 921600 write_flash -z 0x0 Merged\GT1xx.bin
+
+goto again
