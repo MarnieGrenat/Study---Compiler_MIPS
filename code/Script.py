@@ -17,11 +17,12 @@ VERBOSE = 5
 
 def main(DEBUG_LEVEL:int=ERROR) -> int:
 	debugger.setDebugLevel(DEBUG_LEVEL)
-	quantidadeArquivosHexaGerados = decompiler.gerarArquivosHexaSeNecessario()
-	quantidadeArquivosAssemblyGerados = compiler.gerarArquivosAssemblySeNecessario()
 
-	return fileSys.InformacoesNoTerminal(QuantidadeArquivosHexaGerados,
-										QuantidadeArquivosAssemblyGerados)
+	countGeneratedAssembly = decompiler.generateAssemblyIfNecessary()
+	countGeneratedHex = compiler.generateHexIfNecessary()
+
+	return fileSys.printINFO_onTerminal(countGeneratedHex,
+										countGeneratedAssembly)
 
 # Execução do programa
 if (__name__ == '__main__'):
