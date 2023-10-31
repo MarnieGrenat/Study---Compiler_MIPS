@@ -28,6 +28,7 @@ class Assembly:
             binary+= self.translateCommands(commands)
 
     ### GETTERS ###
+
     def getAssemblyCode(self) -> str:
         return self.assemblyCode
 
@@ -37,6 +38,10 @@ class Assembly:
     # Não vou produzir setters, já que não pretendo dar liberdade de gerar assembly ou binário sem ser pelo construtor.
 
     def breakLinesIntoCommands(self, codeLine:str) -> list:
+        '''
+        Essa função será depreciada, já que pretendo fazer uma limpar o assembly previamente e iterar o arquivo
+        da direita para esquerda, não necessitando dessa função.
+        '''
         if codeLine[0] == "#":
             return []
         if codeLine[-1] == ":":
@@ -47,16 +52,24 @@ class Assembly:
         # TODO: Tratamento de erros
         return list(commands)
 
-    def translateCommands(self, commands:list) -> bin:
-        if commands[0] in ['or', 'and', 'sub', 'sltiu']: # Imediato ou com registradores?
-            return self.translateRType(commands)
-        elif commands[0] in ['lw', 'sw', 'beq']:
-            return self.translateIType(commands)
+    ######################### TRADUÇÃO ASSEMBLY PARA BINÁRIO #########################
+
+    def translateCommands(self, commands:list) -> str:                          #TODO: Verificar LW e SW
+        logV(f"Lendo linha: {commands}")
+        logV(f"Verificando opCode: {commands[0]}")
+        if commands[0] in ['or', 'and', 'sub']: # Imediato ou com registradores?
+            return self.translateRType(commands)                                # [opCode]+[rd]+[rs]+[rt]+[shamt]+[funct]
+        elif commands[0] in ['lw', 'sw', 'beq', 'sltiu']:
+            return self.translateIType(commands)                                # [opCode]+[rs]+[rt]+[immediate]
         elif commands[0] in ['j']:
-            return self.translateJType(commands)
+            return self.translateJType(commands)                                # [opCode]+[address]
         else:
             if (commands[0][0] != '#' and commands[0][-1] != ':'): 				# Se não começa com # ou se não termina com :
                 logE(f"Erro na linha {commands}. Comando {commands[0]} não reconhecido.")
+                return "ERROR [1]"
+            logE(f"Comentário indesejado, label, ou linha vazia. {commands}")
+            return "ERROR [2]"
+
 
     def translateJType(self, commands:list) -> str:
         # [opCode]+[address]
@@ -64,7 +77,7 @@ class Assembly:
             binary = '000100'
             self.getJumpAddress(commands[1])
         else:
-            logE("Comando {commands} não reconhecido.")
+            logE(f"Comando {commands} não reconhecido.")
             binary = '-1'
             
         return binary
@@ -72,7 +85,7 @@ class Assembly:
     def getJumpAddress(self, label:list) -> bin:
         return self.consultLabelAddress(label)
     
-    def consultLabelAddress(self, label) -> str:
+    def consultLabelAddress(self, label) -> str:                                        #TODO: Iterar lista e pegar todos labels; Adicionar labels em DICT {label:address}
         return self.labels[label]
 
     def translateRType(self, commands:list) -> bin:
@@ -85,7 +98,7 @@ class Assembly:
         binary += self.appendFunct(commands[0])
         return binary
 
-    def translateIType(self, commands:list) -> bin:#
+    def translateIType(self, commands:list) -> bin:
         # [opCode]+[rs]+[rt]+[immediate]
         binary = self.translateOpCode(commands[0])
         binary += self.translateRegister(commands[1])
@@ -93,10 +106,39 @@ class Assembly:
         binary += self.translateImmediate(commands[3])
         return binary
 
-    def translateOpCode(self, opCode:str) -> bin:
-        pass
+    def translateOpCode(self, opCode:str) -> bin:                                       #TODO: Traduzir OpCode 
+    '''
+    R-Type - OR, AND, SUB
+    I-Type - LW, SW, SLTIU, BEQ
+    J-Type - J 
+    '''
+        if opCode in ['or', 'and', 'sub']:
+            return 0b000000[2:].zfill(5)
+        if opCode == 'beq':
+            return 0b000010[2:].zfill(5)
+        
+    
+    def appendShamt(self, opCode:str, shamt:str) -> bin:
+        logV("Não é necessário setar shamt.. retornando '00000'")
+        return 0b00000[2:].zfill(5)
 
-    def translateRegister(self, register:str) -> str:
+
+    def appendFunct(self, opCode:str) -> bin:
+        if opCode == 'or':
+            binary = 0b100101
+        elif opCode == 'and':
+            binary = 0b100100
+        elif opCode == 'sub':
+            binary = 0b100010
+        else:
+            logE(f"Comando {opCode} não reconhecido.")
+            binary = 0b111111
+        return binary[2:].zfill(5)
+
+    def translateImmediate(self, immediate:str) -> bin:
+        return bin(immediate)
+    
+    def translateRegister(self, register:str) -> bin:
         if register[0] != "$":
             logE(f"Registrador {register} não reconhecido.")
             return '-1'
@@ -106,40 +148,80 @@ class Assembly:
             return str(bin(int(register)))[2:].zfill(5)
         elif register in ['zero', 'at', 'gp', 'sp', 'fp', 'ra']:
             return self.translateRegisterSpecialCases(register)
-        elif register[0] == 'v':
-            return self.translateRegisterV(register)
-        elif register[0] == 'a':
-            return self.translateRegisterA(register)
-        elif register[0] == 't':
-            return self.translateRegisterT(register)
-        elif register[0] == 's':
-            return self.translateRegisterS(register)
-        elif register[0] == 'k':
-            return self.translateREgisterK(register)
+        elif (int(register[1]) < 0):
+            logE(f"Registrador não permitido! Valor: ${register}")
+            return "ERROR"
         else:
-            logE(f"Registrador {register} não reconhecido.")
-            return '-1'
-            
-        pass
-    
-    
-    def appendShamt(self, opCode:str, shamt:str) -> str:
-        return '00000'
+            if register[0] == 'v':
+                return self.translateRegisterV(register[1])
+            if register[0] == 'a':
+                return self.translateRegisterA(register[1])
+            if register[0] == 't':
+                return self.translateRegisterT(register[1])
+            if register[0] == 's':
+                return self.translateRegisterS(register[1])
+            if register[0] == 'k':
+                return self.translateRegisterK(register[1])
+            else:
+                logE(f"Registrador {register} não reconhecido.")
+                return 'ERROR REGISTRADORES'
 
-    def appendFunct(self, opCode:str) -> str:
-        if opCode == 'or':
-            binary = '100101'
-        elif opCode == 'and':
-            binary = '100100'
-        elif opCode == 'sub':
-            binary = '100010'
+    def translateRegisterSpecialCases(self, register) -> bin:
+        if register == 'zero':
+            return bin(0)[2:].zfill(5)
+        if register == 'at':
+            return bin(1)[2:].zfill(5)
+        if register == 'gp':
+            return bin(28)[2:].zfill(5)
+        if register == 'sp':
+            return bin(29)[2:].zfill(5)
+        if register == 'fp':
+            return bin(30)[2:].zfill(5)
+        if register == 'ra':
+            return bin(31)[2:].zfill(5)
+
+    def translateRegisterV(self, register:int) -> bin:
+        if int(register > 1):
+            logE(f"Registrador não permitido! Valor: {register}")
+            return bin(99999)[2:].zfill(5)
+
+        aux = 2 + int(register)
+        return bin(aux)[2:].zfill(5)
+    
+    def translateRegisterA(self, register:int) -> bin:
+        if int(register > 3):
+            logE(f"Registrador não permitido! Valor: {register}")
+            return bin(99999)[2:].zfill(5)
+
+        aux = 4 + int(register)
+        return bin(aux)[2:].zfill(5)
+    
+    def translateRegisterT(self, register:int) -> bin:                                  #TODO: Verificar valores e checar questão to $t7
+        if (register < 8):
+            aux =  8 + int(register)
+        elif register > 6 and register < 10:
+            aux = 16 + int(register)
+
         else:
-            logE("Comando {opCode} não reconhecido.")
-            binary = '-1'
-        return binary
+            logE(f"Registrador não permitido! Valor: {register}")
+            return bin(99999)[2:].zfill(5)  
+        return bin(aux)[2:].zfill(5)
+    
+    def translateRegisterS(self, register:int) -> bin:
+        if int(register > 6):
+            logE(f"Registrador não permitido! Valor: {register}") 
+            return bin(99999)[2:].zfill(5)
 
-    def translateImmediate(self, immediate:str) -> bin:
-        return bin(immediate)
+        aux = 16 + int(register)
+        return bin(aux)[2:].zfill(5)
+
+    def translateRegisterK(self, register:int) -> bin:
+        if int(register > 1):
+            logE(f"Registrador não permitido! Valor: {register}")
+            return bin(99999)[2:].zfill(5)
+
+        aux = 26 + int(register)
+        return bin(aux)[2:].zfill(5)
 
 
 
