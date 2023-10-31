@@ -1,18 +1,12 @@
-from code.compiler.dependencies.AssemblyFile import Assembly
-from code.compiler.dependencies.HexFile import Hex
-from dependencies.Debugger import logE, logW, logI, logD, logV
 from os import listdir
-
+from dependencies.FileSystem import File as file
+from dependencies.Debugger import logE, logW, logI, logD, logV
 commandsAssembly = ['or', 'and', 'sub', 'sltiu', 'lw', 'sw', 'beq', 'j']
 commandsHex = []
 
-
-def getListOfFiles(path:str) -> list:
-    return listdir(path)
-
 def generateHexadecimalIfNecessary() -> int:
-    assemblyFileNames = getListOfFiles(r"../../assembly")
-    hexFileNames = getListOfFiles(r"../../hexadecimal")
+    assemblyFileNames = file.getListOfFiles(r"../../assembly")
+    hexFileNames = file.getListOfFiles(r"../../hexadecimal")
 
     count = 0
     for fileName in assemblyFileNames:
