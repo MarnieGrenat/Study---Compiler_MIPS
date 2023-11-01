@@ -1,9 +1,10 @@
+from Error import Error
 from Debugger import logE, logW, logI, logD, logV
 
 '''
 R-Type - OR, AND, SUB
 I-Type - LW, SW, SLTIU, BEQ
-J-Type - J 
+J-Type - J
 '''
 
 class Assembly:
@@ -11,7 +12,7 @@ class Assembly:
         self.assemblyCode = self.cleanAssemblyCode()
         self.labels = self.findAllLabels()
         self.binaryCode = self.GenerateBinary()
-    
+
     def findAllLabels(self) -> dict:
         '''Encontra todos os labels do código assembly e os retorna em um dicionário.'''
         labels = {}
@@ -19,7 +20,7 @@ class Assembly:
             if codeLine[-1] == ':':
                 labels[codeLine[:-1]] = self.getCommandAddress(codeLine)
         return labels
-     
+
     def GenerateBinary(self) -> str:
         '''Gera o código binário a partir do código assembly.'''
         binary = ""
@@ -65,26 +66,21 @@ class Assembly:
             return self.translateJType(commands)                                # [opCode]+[address]
         else:
             if (commands[0][0] != '#' and commands[0][-1] != ':'): 				# Se não começa com # ou se não termina com :
-                logE(f"Erro na linha {commands}. Comando {commands[0]} não reconhecido.")
-                return "ERROR [1]"
-            logE(f"Comentário indesejado, label, ou linha vazia. {commands}")
-            return "ERROR [2]"
+                raise Error(f"Comando {commands[0]} não reconhecido.")
+            raise Error(f"Comentário indesejado, label, ou linha vazia. {commands}")
+
 
 
     def translateJType(self, commands:list) -> str:
         # [opCode]+[address]
         if commands[0] == 'j':
-            binary = '000100'
-            self.getJumpAddress(commands[1])
+            return '000100' + self.getJumpAddress(commands[1])
         else:
-            logE(f"Comando {commands} não reconhecido.")
-            binary = '-1'
-            
-        return binary
+            raise Error(f"Comando {commands} não reconhecido.")
 
     def getJumpAddress(self, label:list) -> bin:
         return self.consultLabelAddress(label)
-    
+
     def consultLabelAddress(self, label) -> str:                                        #TODO: Iterar lista e pegar todos labels; Adicionar labels em DICT {label:address}
         return self.labels[label]
 
@@ -106,18 +102,19 @@ class Assembly:
         binary += self.translateImmediate(commands[3])
         return binary
 
-    def translateOpCode(self, opCode:str) -> bin:                                       #TODO: Traduzir OpCode 
-    '''
-    R-Type - OR, AND, SUB
-    I-Type - LW, SW, SLTIU, BEQ
-    J-Type - J 
-    '''
-        if opCode in ['or', 'and', 'sub']:
+    def translateOpCode(self, opCode:str) -> bin:                                       #TODO: Traduzir OpCode
+        if opCode in ['or', 'and', 'sub']:                                              # R-Type - OR, AND, SUB
             return 0b000000[2:].zfill(5)
-        if opCode == 'beq':
+        if opCode == 'beq':                                                             # I-Type - LW, SW, SLTIU, BEQ
             return 0b000010[2:].zfill(5)
-        
-    
+        if opCode in ['lw', 'sw']:                                                      # I-Type - LW, SW, SLTIU, BEQ
+            return 0b100011[2:].zfill(5)
+        if opCode in ['sltiu']:                                                         # I-Type - LW, SW, SLTIU, BEQ
+            return 0b001011[2:].zfill(5)
+        if opCode == 'j':                                                               # J-Type - J
+            return 0b000010[2:].zfill(5)
+
+
     def appendShamt(self, opCode:str, shamt:str) -> bin:
         logV("Não é necessário setar shamt.. retornando '00000'")
         return 0b00000[2:].zfill(5)
@@ -131,16 +128,16 @@ class Assembly:
         elif opCode == 'sub':
             binary = 0b100010
         else:
-            logE(f"Comando {opCode} não reconhecido.")
+            raise Error(f"Comando {opCode} não reconhecido.")
             binary = 0b111111
         return binary[2:].zfill(5)
 
     def translateImmediate(self, immediate:str) -> bin:
         return bin(immediate)
-    
+
     def translateRegister(self, register:str) -> bin:
         if register[0] != "$":
-            logE(f"Registrador {register} não reconhecido.")
+            raise Error(f"Registrador {register} não reconhecido.")
             return '-1'
         #verify if is number
         register = register.replace("$", "")
@@ -149,8 +146,7 @@ class Assembly:
         elif register in ['zero', 'at', 'gp', 'sp', 'fp', 'ra']:
             return self.translateRegisterSpecialCases(register)
         elif (int(register[1]) < 0):
-            logE(f"Registrador não permitido! Valor: ${register}")
-            return "ERROR"
+            raise Error(f"Registrador ${register} não reconhecido.")
         else:
             if register[0] == 'v':
                 return self.translateRegisterV(register[1])
@@ -163,9 +159,7 @@ class Assembly:
             if register[0] == 'k':
                 return self.translateRegisterK(register[1])
             else:
-                logE(f"Registrador {register} não reconhecido.")
-                return 'ERROR REGISTRADORES'
-
+                raise Error(f"Registrador ${register} não reconhecido.")
     def translateRegisterSpecialCases(self, register) -> bin:
         if register == 'zero':
             return bin(0)[2:].zfill(5)
@@ -182,20 +176,18 @@ class Assembly:
 
     def translateRegisterV(self, register:int) -> bin:
         if int(register > 1):
-            logE(f"Registrador não permitido! Valor: {register}")
-            return bin(99999)[2:].zfill(5)
+            raise Error(f"Registrador não permitido! Valor: {register}")
 
         aux = 2 + int(register)
         return bin(aux)[2:].zfill(5)
-    
+
     def translateRegisterA(self, register:int) -> bin:
         if int(register > 3):
-            logE(f"Registrador não permitido! Valor: {register}")
-            return bin(99999)[2:].zfill(5)
+            raise Error(f"Registrador não permitido! Valor: {register}")
 
         aux = 4 + int(register)
         return bin(aux)[2:].zfill(5)
-    
+
     def translateRegisterT(self, register:int) -> bin:                                  #TODO: Verificar valores e checar questão to $t7
         if (register < 8):
             aux =  8 + int(register)
@@ -203,27 +195,19 @@ class Assembly:
             aux = 16 + int(register)
 
         else:
-            logE(f"Registrador não permitido! Valor: {register}")
-            return bin(99999)[2:].zfill(5)  
+            raise Error(f"Registrador ${register} não reconhecido.")
         return bin(aux)[2:].zfill(5)
-    
+
     def translateRegisterS(self, register:int) -> bin:
         if int(register > 6):
-            logE(f"Registrador não permitido! Valor: {register}") 
-            return bin(99999)[2:].zfill(5)
+            raise Error(f"Registrador não permitido! Valor: {register}")
 
         aux = 16 + int(register)
         return bin(aux)[2:].zfill(5)
 
     def translateRegisterK(self, register:int) -> bin:
         if int(register > 1):
-            logE(f"Registrador não permitido! Valor: {register}")
-            return bin(99999)[2:].zfill(5)
+            raise Error(f"Registrador não permitido! Valor: {register}")
 
         aux = 26 + int(register)
         return bin(aux)[2:].zfill(5)
-
-
-
-
-
