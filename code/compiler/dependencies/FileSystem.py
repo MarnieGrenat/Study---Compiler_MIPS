@@ -24,7 +24,13 @@ class File():
 		path = self.assembly_path+"/"+self.name
 		with open((path), "w") as file:
 			file.write(self.assembly.CodeInAssembly())
+			
+	def getAssemblyContent(self) -> list:
+		return self.readContent(self.assembly_path+"/"+self.name)
 
+	def getHexaContent(self) -> list:
+		return self.readContent(self.hexa_path+"/"+self.name)
+	
 	def readContent(self, path:str) -> list:
 		path = self.hexa_path+"/"+self.name
 		try:
@@ -37,11 +43,6 @@ class File():
 			content = []
 		return content
 
-	def getAssemblyContent(self) -> list:
-		return self.readContent(self.assembly_path+"/"+self.name)
-
-	def getHexaContent(self) -> list:
-		return self.readContent(self.hexa_path+"/"+self.name)
 
 	def breakCodeIntoList(self, code) -> list:
 		cleanedCode = []
