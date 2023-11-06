@@ -8,11 +8,14 @@ Todos os outros arquivos nesse script são importados do pacote compiler.
 O único arquivo que o usuário precisa rodar é esse, Script.py.
 '''
 
-def main() -> int:
-	countGeneratedHexadecimal= c.generateHexadecimalIfNecessary()
+
+def main() -> None:
+	countGeneratedHexadecimal = c.generateHexadecimalIfNecessary()
 	countGeneratedAssembly = c.generateAssemblyIfNecessary()
-	return c.printLogInformationOnTerminal(countGeneratedHexadecimal,
-											countGeneratedAssembly)
+
+	c.printLogInformationOnTerminal(
+		countGeneratedHexadecimal, countGeneratedAssembly)
+
 
 # Execução do programa
 if (__name__ == '__main__'):

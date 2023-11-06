@@ -1,38 +1,34 @@
 from Error import Error
 from Debugger import logE, logW, logI, logD, logV
-from os import listdir
+from os.path import join
 from Assembly import Assembly
 from Hex import Hex
-
 class File():
-	def __init__(self, name:str) -> None:
-		self.name = name
-		self.assembly_path = r"../../assembly"
-		self.hexa_path =  r"../../hexadecimal"
-		self.assembly = Assembly(self.getContent(self.assembly_path))
-		self.hexa = Hex(self.getContent(self.hexa_path))
-
-	def getListOfFiles(self, path:str) -> list:
-		return listdir(path)
+	def __init__(self, fileName: str) -> None:
+		self.name = fileName
+		self.assembly = Assembly(self.getAssemblyContent())
+		self.hexa = Hex(self.getHexaContent())
 
 	def saveHexFile(self) -> None:
-		path = self.hexa_path+"/"+self.name
+		path = join(r"../../hexadecimal", self.name)
 		with open((path), "w") as file:
 			file.write(self.hexa.CodeInHexa())
 
 	def saveAssemblyFile(self) -> None:
-		path = self.assembly_path+"/"+self.name
+		path = join(r"../../assembly", self.name)
 		with open((path), "w") as file:
 			file.write(self.assembly.CodeInAssembly())
-			
+
 	def getAssemblyContent(self) -> list:
-		return self.readContent(self.assembly_path+"/"+self.name)
+		path = join(r"../../assembly", self.name)
+		return self.readContent(path)
 
 	def getHexaContent(self) -> list:
-		return self.readContent(self.hexa_path+"/"+self.name)
-	
-	def readContent(self, path:str) -> list:
-		path = self.hexa_path+"/"+self.name
+		path = join(r"../../hexadecimal", self.name)
+		return self.readContent(path)
+
+	def readContent(self, path: str) -> list:
+		path = join(path, self.name)
 		try:
 			logI(f"Existe arquivo no path! Lendo arquivo com PATH: {path}")
 			with open((path), "r") as file:
@@ -42,7 +38,6 @@ class File():
 			logI(f"Arquivo não existente. Enviando conteúdo vazio. PATH: {path}")
 			content = []
 		return content
-
 
 	def breakCodeIntoList(self, code) -> list:
 		cleanedCode = []
