@@ -1,32 +1,30 @@
 from Error import Error
 from Debugger import logE, logW, logI, logD, logV
 
-'''
-R-Type - OR, AND, SUB
-I-Type - LW, SW, SLTIU, BEQ
-J-Type - J
-'''
 
 class Assembly:
-    def __init__(self, assemblyCode:str) -> None:
+    def __init__(self, assemblyCode: str) -> None:
         self.assemblyCode = self.cleanAssemblyCode()
-        self.labels = self.findAllLabels()
         self.binaryCode = self.GenerateBinary()
+        self.labels = self.findAllLabels()
 
     def findAllLabels(self) -> dict:
-        '''Encontra todos os labels do código assembly e os retorna em um dicionário.'''
+        ''' Itera todo o código e encontra strings que termina com ':' e adiciona em um dicionário. com o endereço da linha.'''
         labels = {}
+        address = 0
+
         for codeLine in self.assemblyCode:
-            if codeLine[-1] == ':':
-                labels[codeLine[:-1]] = self.getCommandAddress(codeLine)
+            codeLine = codeLine.strip()
+            if codeLine.endswith(':'):
+                labels[codeLine[:-1]] = address
+            address += 1
         return labels
 
     def GenerateBinary(self) -> str:
-        '''Gera o código binário a partir do código assembly.'''
         binary = ""
         for codeLine in self.assemblyCode:
             commands = self.breakLineIntoCommands(codeLine)
-            binary+= self.translateCommands(commands)
+            binary += self.translateCommands(commands)
 
     ### GETTERS ###
 
@@ -36,178 +34,201 @@ class Assembly:
     def getBinaryCode(self) -> str:
         return self.binaryCode
 
-    # Não vou produzir setters, já que não pretendo dar liberdade de gerar assembly ou binário sem ser pelo construtor.
-
-    def breakLinesIntoCommands(self, codeLine:str) -> list:
-        '''
-        Essa função será depreciada, já que pretendo fazer uma limpar o assembly previamente e iterar o arquivo
-        da direita para esquerda, não necessitando dessa função.
-        '''
-        if codeLine[0] == "#":
-            return []
-        if codeLine[-1] == ":":
-            # self.getLabel(codeLine)
-            return []
-        codeLine = codeLine.replace(",", "")
-        commands = codeLine.split()
-        # TODO: Tratamento de erros
-        return list(commands)
-
     ######################### TRADUÇÃO ASSEMBLY PARA BINÁRIO #########################
 
-    def translateCommands(self, commands:list) -> str:                          #TODO: Verificar LW e SW
+    def translateCommands(self, commands: list) -> str:  # TODO: Verificar LW e SW
+        '''Peneira para as funções de tradução de tipos.'''
         logV(f"Lendo linha: {commands}")
         logV(f"Verificando opCode: {commands[0]}")
-        if commands[0] in ['or', 'and', 'sub']: # Imediato ou com registradores?
-            return self.translateRType(commands)                                # [opCode]+[rd]+[rs]+[rt]+[shamt]+[funct]
-        elif commands[0] in ['lw', 'sw', 'beq', 'sltiu']:
-            return self.translateIType(commands)                                # [opCode]+[rs]+[rt]+[immediate]
-        elif commands[0] in ['j']:
-            return self.translateJType(commands)                                # [opCode]+[address]
+        match commands[0]:
+            case 'or':
+                return self.translateRType(commands)
+            case 'and':
+                return self.translateRType(commands)
+            case 'sub':
+                return self.translateRType(commands)
+
+            case 'lw':
+                return self.translateIType(commands)
+            case 'sw':
+                return self.translateIType(commands)
+            case 'beq':
+                return self.translateIType(commands)
+            case 'sltiu':
+                return self.translateIType(commands)
+
+            case 'j':
+                return self.translateJType(commands)
+
+            case _:
+                raise Error(
+                    f"Comentário indesejado, label, ou linha vazia. {commands}")
+
+                #### J TYPE ####
+
+    def translateJType(self, commands: list) -> str:
+        '''[opCode]+[address]'''
+        binary = self.translateOpCode(commands[0])[:2].zfill(
+            6) + self.getJumpAddress(commands[1])[.2:].zfill(26)
+        return self.binaryVerified(binary)
+
+    def getJumpAddress(self, label: list) -> str:
+        return bin(self.consultLabelAddress(label))
+
+    def consultLabelAddress(self, label) -> int:
+        return self.labels[label].value
+
+        #### R TYPE ####
+
+    def translateRType(self, commands: list) -> str:
+        '''[opCode]+[rd]+[rs]+[rt]+[shamt]+[funct]'''
+        binary = (self.translateOpCode(commands[0], type='R'))[2:].zfill(6)
+        binary += self.translateRegister(commands[1])[2:].zfill(5)
+        binary += self.translateRegister(commands[2])[2:].zfill(5)
+        binary += self.translateRegister(commands[3])[2:].zfill(5)
+        binary += self.appendShamt(commands[0])[2:].zfill(5)
+        binary += self.appendFunct(commands[0])[2:].zfill(6)
+        return self.binaryVerified(binary)
+
+    def appendShamt(self, shamtCode: str, shamt: str) -> str:
+        logV("Não é necessário setar shamt para as funções suportadas nessa versão. Retornando '0b0'")
+        return bin(0)
+
+    def appendFunct(self, functionCode: str) -> str:
+        match functionCode:
+            case 'or':
+                return bin(37)
+            case 'and':
+                return bin(36)
+            case 'sub':
+                return bin(34)
+            case _:
+                raise Error(f"Comando {functionCode} não reconhecido.")
+                #### I TYPE ####
+
+    def translateIType(self, commands: list) -> str:
+        '''[opCode]+[rs]+[rt]+[immediate]'''
+        binary = self.translateOpCode(str(commands[0]), type='I')[2:].zfill(6)
+        binary += self.translateRegister(str(commands[1]))[2:].zfill(5)
+        binary += self.translateRegister(str(commands[2]))[2:].zfill(5)
+        binary += self.translateImmediate(int(commands[3]))[2:].zfill(16)
+        return self.binaryVerified(binary)
+
+    def translateImmediate(self, immediate: int) -> str:
+        return bin(immediate)[2:].zfill(16)
+
+        #### FUNCTIONS TO SUPPORT TRANSLATION OF ALL TYPES  ####
+
+    def translateOpCode(self, opCode: str, type: chr) -> str:
+        if type == 'R':
+            match opCode:
+                case "or":
+                    return bin(0)
+                case "and":
+                    return bin(0)
+                case "sub":
+                    return bin(0)
+                case _:
+                    raise Error(f"Comando {opCode} não reconhecido.")
+        elif type == 'I':
+            match opCode:
+                case "beq":
+                    return bin(4)
+                case "lw":
+                    return bin(35)
+                case "sw":
+                    return bin(43)
+                case "sltiu":
+                    return bin(11)
+                case _:
+                    raise Error(f"Comando {opCode} não reconhecido.")
+        elif type == 'J':
+            match opCode:
+                case "j":
+                    return bin(2)
+                case _:
+                    raise Error(f"Comando {opCode} não reconhecido.")
         else:
-            if (commands[0][0] != '#' and commands[0][-1] != ':'): 				# Se não começa com # ou se não termina com :
-                raise Error(f"Comando {commands[0]} não reconhecido.")
-            raise Error(f"Comentário indesejado, label, ou linha vazia. {commands}")
+            raise Error(f"Tipo {type} não reconhecido. Opcode: {opCode}")
 
-
-
-    def translateJType(self, commands:list) -> str:
-        # [opCode]+[address]
-        if commands[0] == 'j':
-            return '000100' + self.getJumpAddress(commands[1])
-        else:
-            raise Error(f"Comando {commands} não reconhecido.")
-
-    def getJumpAddress(self, label:list) -> bin:
-        return self.consultLabelAddress(label)
-
-    def consultLabelAddress(self, label) -> str:                                        #TODO: Iterar lista e pegar todos labels; Adicionar labels em DICT {label:address}
-        return self.labels[label]
-
-    def translateRType(self, commands:list) -> bin:
-        # [opCode]+[rd]+[rs]+[rt]+[shamt]+[funct]
-        binary = self.translateOpCode(commands[0])
-        binary += self.translateRegister(commands[1])
-        binary += self.translateRegister(commands[2])
-        binary += self.translateRegister(commands[3])
-        binary += self.appendShamt(commands[0])
-        binary += self.appendFunct(commands[0])
+    def binaryVerified(self, binary: bin) -> str:
+        if len(binary) > 32:
+            raise Error(f"Binary code maior que 32 bits. Valor: {binary}")
+        if len(binary) < 32:
+            raise Error(f"Binary code menor que 32 bits. Valor: {binary}")
+        if not binary.isdigit():
+            raise Error(f"Binary code não é um número. Valor: {binary}")
         return binary
 
-    def translateIType(self, commands:list) -> bin:
-        # [opCode]+[rs]+[rt]+[immediate]
-        binary = self.translateOpCode(commands[0])
-        binary += self.translateRegister(commands[1])
-        binary += self.translateRegister(commands[2])
-        binary += self.translateImmediate(commands[3])
-        return binary
-
-    def translateOpCode(self, opCode:str) -> bin:                                       #TODO: Traduzir OpCode
-        if opCode in ['or', 'and', 'sub']:                                              # R-Type - OR, AND, SUB
-            return 0b000000[2:].zfill(5)
-        if opCode == 'beq':                                                             # I-Type - LW, SW, SLTIU, BEQ
-            return 0b000010[2:].zfill(5)
-        if opCode in ['lw', 'sw']:                                                      # I-Type - LW, SW, SLTIU, BEQ
-            return 0b100011[2:].zfill(5)
-        if opCode in ['sltiu']:                                                         # I-Type - LW, SW, SLTIU, BEQ
-            return 0b001011[2:].zfill(5)
-        if opCode == 'j':                                                               # J-Type - J
-            return 0b000010[2:].zfill(5)
-
-
-    def appendShamt(self, opCode:str, shamt:str) -> bin:
-        logV("Não é necessário setar shamt.. retornando '00000'")
-        return 0b00000[2:].zfill(5)
-
-
-    def appendFunct(self, opCode:str) -> bin:
-        if opCode == 'or':
-            binary = 0b100101
-        elif opCode == 'and':
-            binary = 0b100100
-        elif opCode == 'sub':
-            binary = 0b100010
-        else:
-            raise Error(f"Comando {opCode} não reconhecido.")
-            binary = 0b111111
-        return binary[2:].zfill(5)
-
-    def translateImmediate(self, immediate:str) -> bin:
-        return bin(immediate)
-
-    def translateRegister(self, register:str) -> bin:
+    #### Registradores ####
+    def translateRegister(self, register: str) -> str:
+        # treat register
         if register[0] != "$":
             raise Error(f"Registrador {register} não reconhecido.")
-            return '-1'
-        #verify if is number
         register = register.replace("$", "")
+
+        # translate register
         if register.isdigit():
-            return str(bin(int(register)))[2:].zfill(5)
-        elif register in ['zero', 'at', 'gp', 'sp', 'fp', 'ra']:
+            return str(bin(int(register)))
+
+        if register in ['zero', 'at', 'gp', 'sp', 'fp', 'ra']:
             return self.translateRegisterSpecialCases(register)
-        elif (int(register[1]) < 0):
-            raise Error(f"Registrador ${register} não reconhecido.")
-        else:
-            if register[0] == 'v':
-                return self.translateRegisterV(register[1])
-            if register[0] == 'a':
-                return self.translateRegisterA(register[1])
-            if register[0] == 't':
-                return self.translateRegisterT(register[1])
-            if register[0] == 's':
-                return self.translateRegisterS(register[1])
-            if register[0] == 'k':
-                return self.translateRegisterK(register[1])
-            else:
+
+        match register[0]:
+            case 'v':
+                return self.translateRegisterV(int(register[1]))
+            case 'a':
+                return self.translateRegisterA(int(register[1]))
+            case 't':
+                return self.translateRegisterT(int(register[1]))
+            case 's':
+                return self.translateRegisterS(int(register[1]))
+            case 'k':
+                return self.translateRegisterK(int(register[1]))
+            case _:
                 raise Error(f"Registrador ${register} não reconhecido.")
-    def translateRegisterSpecialCases(self, register) -> bin:
-        if register == 'zero':
-            return bin(0)[2:].zfill(5)
-        if register == 'at':
-            return bin(1)[2:].zfill(5)
-        if register == 'gp':
-            return bin(28)[2:].zfill(5)
-        if register == 'sp':
-            return bin(29)[2:].zfill(5)
-        if register == 'fp':
-            return bin(30)[2:].zfill(5)
-        if register == 'ra':
-            return bin(31)[2:].zfill(5)
 
-    def translateRegisterV(self, register:int) -> bin:
-        if int(register > 1):
+    def translateRegisterSpecialCases(self, register) -> str:
+        match register:
+            case 'zero':
+                return bin(0)
+            case 'at':
+                return bin(1)
+            case 'gp':
+                return bin(28)
+            case 'sp':
+                return bin(29)
+            case 'fp':
+                return bin(30)
+            case 'ra':
+                return bin(31)
+            case _:
+                raise Error(
+                    f"Registrador especial {register} não reconhecido.")
+
+    def translateRegisterV(self, register: int) -> str:
+        registerValue = 2 + self.verifyRegister(register, maxValue=1)
+        return bin(registerValue)
+
+    def translateRegisterA(self, register: int) -> str:
+        registerValue = 4 + self.verifyRegister(register, maxValue=3)
+        return bin(registerValue)
+
+    # TODO: Verificar valores e checar questão to $t7
+    def translateRegisterT(self, register: int) -> str:
+        if (register <= 7 and register > 0):
+            return (8 + self.verifyRegister(register, maxValue=7))
+        return (24 + self.verifyRegister(register, maxValue=9, minValue=8))
+
+    def translateRegisterS(self, register: int) -> str:
+        registerValue = 16 + self.verifyRegister(register, maxValue=6)
+        return bin(registerValue)
+
+    def translateRegisterK(self, register: int) -> str:
+        registerValue = 26 + self.verifyRegister(register, maxValue=1)
+        return bin(registerValue)
+
+    def verifyRegister(self, register: int, maxValue: int, minValue: int = 0) -> int:
+        if (register > maxValue) or (register < minValue):
             raise Error(f"Registrador não permitido! Valor: {register}")
-
-        aux = 2 + int(register)
-        return bin(aux)[2:].zfill(5)
-
-    def translateRegisterA(self, register:int) -> bin:
-        if int(register > 3):
-            raise Error(f"Registrador não permitido! Valor: {register}")
-
-        aux = 4 + int(register)
-        return bin(aux)[2:].zfill(5)
-
-    def translateRegisterT(self, register:int) -> bin:                                  #TODO: Verificar valores e checar questão to $t7
-        if (register < 8):
-            aux =  8 + int(register)
-        elif register > 6 and register < 10:
-            aux = 16 + int(register)
-
-        else:
-            raise Error(f"Registrador ${register} não reconhecido.")
-        return bin(aux)[2:].zfill(5)
-
-    def translateRegisterS(self, register:int) -> bin:
-        if int(register > 6):
-            raise Error(f"Registrador não permitido! Valor: {register}")
-
-        aux = 16 + int(register)
-        return bin(aux)[2:].zfill(5)
-
-    def translateRegisterK(self, register:int) -> bin:
-        if int(register > 1):
-            raise Error(f"Registrador não permitido! Valor: {register}")
-
-        aux = 26 + int(register)
-        return bin(aux)[2:].zfill(5)
+        return register
