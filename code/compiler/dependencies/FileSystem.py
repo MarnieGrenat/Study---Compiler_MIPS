@@ -1,39 +1,56 @@
-from Error import Error
-from Debugger import logE, logW, logI, logD, logV
+from compiler.dependencies.Error import Error
+from compiler.dependencies.Debugger import logE, logW, logI, logD, logV
+from compiler.dependencies.Assembly import Assembly
+from compiler.dependencies.Hex import Hex
 from os.path import join
-from Assembly import Assembly
-from Hex import Hex
 class File():
-	def __init__(self, fileName: str) -> None:
+	def __init__(self, fileName: str, type:str) -> None:
 		self.name = fileName
-		self.assembly = Assembly(self.getAssemblyContent())
-		self.hexa = Hex(self.getHexaContent())
+		if type == 'a2h':
+			self.assembly = Assembly(self.getAssemblyContent())
+			self.hexa = self.assembly.getHexaCode()
+
+		elif type == 'h2a':
+			self.hexa = Hex(self.getHexaContent())
+			self.assembly = self.hexa.getAssemblyCode()
+
+		else:
+			logE(f"Tipo de arquivo inválido: {type}")
+			raise Error("Tipo de arquivo inválido.")
+
 
 	def saveHexFile(self) -> None:
-		path = join(r"../../hexadecimal", self.name)
+		path = join(r"hexadecimal", self.name)
 		with open((path), "w") as file:
-			file.write(self.hexa.CodeInHexa())
+			file.write(self.concatCode(self.hexa))
 
 	def saveAssemblyFile(self) -> None:
-		path = join(r"../../assembly", self.name)
+		path = join("assembly", self.name)
 		with open((path), "w") as file:
-			file.write(self.assembly.CodeInAssembly())
+			file.write(self.assembly.getAssemblyCode())
+
 
 	def getAssemblyContent(self) -> list:
-		path = join(r"../../assembly", self.name)
+		path = join(r"assembly", self.name)
 		return self.readContent(path)
 
 	def getHexaContent(self) -> list:
-		path = join(r"../../hexadecimal", self.name)
+		path = join(r"hexadecimal", self.name)
 		return self.readContent(path)
 
+	def concatCode(self, codeList:list) -> str:
+		code = ""
+		for line in codeList:
+			code += line + "\n"
+		return code
+
 	def readContent(self, path: str) -> list:
-		path = join(path, self.name)
+		# path = join(path, self.name)
 		try:
 			logI(f"Existe arquivo no path! Lendo arquivo com PATH: {path}")
 			with open((path), "r") as file:
 				content = file.readlines()
-				return self.breakCodeIntoList(self, content)
+				return self.breakCodeIntoList(content)
 		except IOError:
 			logI(f"Arquivo não existente. Enviando conteúdo vazio. PATH: {path}")
 			content = []

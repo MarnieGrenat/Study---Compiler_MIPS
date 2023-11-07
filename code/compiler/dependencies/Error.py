@@ -3,4 +3,4 @@ class Error(Exception):
         self.message = message
 
     def __str__(self):
-        return f'################### ERROR RAISED: ################### \n{self.message}\n######################################################'
+        return f'\n################### ERROR RAISED: ################### \n{self.message}\n######################################################'
