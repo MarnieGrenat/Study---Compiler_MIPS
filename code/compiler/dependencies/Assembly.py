@@ -144,6 +144,21 @@ class Assembly:
         #### FUNCTIONS TO SUPPORT TRANSLATION OF ALL TYPES  ####
 
     def translateOpCode(self, opCode: str, type: chr) -> str:
+        opCodeMapping = {
+            'or': bin(0),
+            'and': bin(0),
+            'sub': bin(0),
+            'beq' : bin(4),
+            'lw' : bin(35),
+            'sw' : bin(43),
+            'sltiu' : bin(11),
+            'j' : bin(2)
+        }
+        if opCode in opCodeMapping
+            return opCodeMapping[opCode]
+        raise Error(f"Comando {opCode} não reconhecido.")
+        
+        
         if type == 'R':
             match opCode:
                 case "or":
