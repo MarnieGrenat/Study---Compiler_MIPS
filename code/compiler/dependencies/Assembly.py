@@ -1,12 +1,12 @@
-from Error import Error
-from Debugger import logE, logW, logI, logD, logV
+from compiler.dependencies.Error import Error
+from compiler.dependencies.Debugger import logE, logW, logI, logD, logV
 
 
 class Assembly:
     def __init__(self, assemblyCode: str) -> None:
-        self.assemblyCode = self.cleanAssemblyCode()
-        self.binaryCode = self.GenerateBinary()
+        self.assemblyCode = assemblyCode
         self.labels = self.findAllLabels()
+        self.binaryCode = self.GenerateBinary()
 
     def findAllLabels(self) -> dict:
         ''' Itera todo o código e encontra strings que termina com ':' e adiciona em um dicionário. com o endereço da linha.'''
@@ -23,23 +23,41 @@ class Assembly:
     def GenerateBinary(self) -> str:
         binary = ""
         for codeLine in self.assemblyCode:
-            commands = self.breakLineIntoCommands(codeLine)
-            binary += self.translateCommands(commands)
+            codeLine = codeLine.replace(",", "")
+            binary += self.translateCommands(codeLine.split())
 
     ### GETTERS ###
 
     def getAssemblyCode(self) -> str:
-        return self.assemblyCode
+        ## TODO: Transformar listas em string com \n
+        codeInString = ""
+        for code in self.assemblyCode:
+            codeInString += code + "\n"
+        return codeInString
 
     def getBinaryCode(self) -> str:
         return self.binaryCode
 
-    ######################### TRADUÇÃO ASSEMBLY PARA BINÁRIO #########################
+    def getHexaCode(self) -> list:
+        return self.getBinaryCode()
+        # return self.binaryToHexa()
 
+
+    ######################### TRADUÇÃO BINÁRIO PARA HEXA #########################
+    def binaryToHexa(self) -> list:
+        hexa = []
+        # for i in range(0, len(self.binaryCode), 4):
+        #     hexa.append(hex(int(self.binaryCode[i:i+4], 2)))
+        return hexa
+
+    ######################### TRADUÇÃO ASSEMBLY PARA BINÁRIO #########################
     def translateCommands(self, commands: list) -> str:  # TODO: Verificar LW e SW
         '''Peneira para as funções de tradução de tipos.'''
         logV(f"Lendo linha: {commands}")
         logV(f"Verificando opCode: {commands[0]}")
+        if commands[0] in self.labels or ":" in commands[0]:
+            logV("Label encontrada. Retornando vazio.")
+            return ""
         match commands[0]:
             case 'or':
                 return self.translateRType(commands)
@@ -68,11 +86,13 @@ class Assembly:
 
     def translateJType(self, commands: list) -> str:
         '''[opCode]+[address]'''
-        binary = self.translateOpCode(commands[0])[:2].zfill(
-            6) + self.getJumpAddress(commands[1])[.2:].zfill(26)
+        logV(f"Traduzindo J Type: {commands}")
+        binary = self.translateOpCode(commands[0])[:2].zfill(6) + self.getJumpAddress(commands[1])[.2:].zfill(26)
+        logV(f"Binary tipo J gerado: {binary}")
+
         return self.binaryVerified(binary)
 
-    def getJumpAddress(self, label: list) -> str:
+    def getJumpAddress(self, label: str) -> str:
         return bin(self.consultLabelAddress(label))
 
     def consultLabelAddress(self, label) -> int:
@@ -82,15 +102,17 @@ class Assembly:
 
     def translateRType(self, commands: list) -> str:
         '''[opCode]+[rd]+[rs]+[rt]+[shamt]+[funct]'''
+        logV(f"Traduzindo R Type: {commands}")
         binary = (self.translateOpCode(commands[0], type='R'))[2:].zfill(6)
         binary += self.translateRegister(commands[1])[2:].zfill(5)
         binary += self.translateRegister(commands[2])[2:].zfill(5)
         binary += self.translateRegister(commands[3])[2:].zfill(5)
         binary += self.appendShamt(commands[0])[2:].zfill(5)
         binary += self.appendFunct(commands[0])[2:].zfill(6)
+        logV(f"Binary tipo R gerado: {binary}")
         return self.binaryVerified(binary)
 
-    def appendShamt(self, shamtCode: str, shamt: str) -> str:
+    def appendShamt(self, shamtCode: str) -> str:
         logV("Não é necessário setar shamt para as funções suportadas nessa versão. Retornando '0b0'")
         return bin(0)
 
@@ -108,10 +130,12 @@ class Assembly:
 
     def translateIType(self, commands: list) -> str:
         '''[opCode]+[rs]+[rt]+[immediate]'''
+        logV(f"Traduzindo I Type: {commands}")
         binary = self.translateOpCode(str(commands[0]), type='I')[2:].zfill(6)
         binary += self.translateRegister(str(commands[1]))[2:].zfill(5)
         binary += self.translateRegister(str(commands[2]))[2:].zfill(5)
         binary += self.translateImmediate(int(commands[3]))[2:].zfill(16)
+        logV(f"Binary tipo I gerado: {binary}")
         return self.binaryVerified(binary)
 
     def translateImmediate(self, immediate: int) -> str:
@@ -120,6 +144,21 @@ class Assembly:
         #### FUNCTIONS TO SUPPORT TRANSLATION OF ALL TYPES  ####
 
     def translateOpCode(self, opCode: str, type: chr) -> str:
+        opCodeMapping = {
+            'or': bin(0),
+            'and': bin(0),
+            'sub': bin(0),
+            'beq' : bin(4),
+            'lw' : bin(35),
+            'sw' : bin(43),
+            'sltiu' : bin(11),
+            'j' : bin(2)
+        }
+        if opCode in opCodeMapping
+            return opCodeMapping[opCode]
+        raise Error(f"Comando {opCode} não reconhecido.")
+        
+        
         if type == 'R':
             match opCode:
                 case "or":
@@ -163,6 +202,7 @@ class Assembly:
     #### Registradores ####
     def translateRegister(self, register: str) -> str:
         # treat register
+        logV(f"Traduzindo registrador: {register}")
         if register[0] != "$":
             raise Error(f"Registrador {register} não reconhecido.")
         register = register.replace("$", "")
@@ -174,21 +214,27 @@ class Assembly:
         if register in ['zero', 'at', 'gp', 'sp', 'fp', 'ra']:
             return self.translateRegisterSpecialCases(register)
 
+        logV(f"Traduzindo registrador por tipo. {register[0]}")
         match register[0]:
             case 'v':
+                logV("Registrador tipo V")
                 return self.translateRegisterV(int(register[1]))
             case 'a':
+                logV("Registrador tipo A")
                 return self.translateRegisterA(int(register[1]))
             case 't':
+                logV("Registrador tipo T")
                 return self.translateRegisterT(int(register[1]))
             case 's':
+                logV("Registrador tipo S")
                 return self.translateRegisterS(int(register[1]))
             case 'k':
+                logV("Registrador tipo K")
                 return self.translateRegisterK(int(register[1]))
             case _:
                 raise Error(f"Registrador ${register} não reconhecido.")
 
-    def translateRegisterSpecialCases(self, register) -> str:
+    def translateRegisterSpecialCases(self, register:str) -> str:
         match register:
             case 'zero':
                 return bin(0)
@@ -216,9 +262,9 @@ class Assembly:
 
     # TODO: Verificar valores e checar questão to $t7
     def translateRegisterT(self, register: int) -> str:
-        if (register <= 7 and register > 0):
-            return (8 + self.verifyRegister(register, maxValue=7))
-        return (24 + self.verifyRegister(register, maxValue=9, minValue=8))
+        if (register <= 7 and register >= 0):
+            return bin(8 + self.verifyRegister(register, maxValue=7))
+        return bin(24 + self.verifyRegister(register, maxValue=9, minValue=8))
 
     def translateRegisterS(self, register: int) -> str:
         registerValue = 16 + self.verifyRegister(register, maxValue=6)

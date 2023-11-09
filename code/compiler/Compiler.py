@@ -1,34 +1,33 @@
-from dependencies.FileSystem import File as File
-from dependencies.Debugger import logE, logW, logI, logD, logV
+from compiler.dependencies.FileSystem import File as File
+from compiler.dependencies.Debugger import logE, logW, logI, logD, logV
 import os
 
 def generateHexadecimalIfNecessary() -> int:
-    assemblyDir = r"../../assembly"
-    assemblyFileNames = File.getListOfFiles(assemblyDir)
-    hexaDir = r"../../hexadecimal"
-    hexFileNames = File.getListOfFiles(hexaDir)
-
+    ''' Assembly to MIPS'''
+    assemblyDir = r"assembly"
+    hexaDir = r"hexadecimal"
+    assemblyFileNames = getListOfFiles(assemblyDir)
+    hexFileNames = getListOfFiles(hexaDir)
     count = 0
     for fileName in assemblyFileNames:
         if fileName not in hexFileNames:
-            newHexFile = File(fileName)
-            newHexFile.generateHexadecimal()
-            newHexFile.saveFile()
+            newHexFile = File(fileName, 'a2h')
+            newHexFile.saveHexFile()
             count += 1
     return count
 
 def generateAssemblyIfNecessary() -> int:
-    assemblyDir = r"../../assembly"
-    assemblyFileNames = File.getListOfFiles(assemblyDir)
-    hexaDir = r"../../hexadecimal"
-    hexFileNames = File.getListOfFiles(hexaDir)
+    ''' MIPS to Assembly '''
+    assemblyDir = r"assembly"
+    hexaDir = r"hexadecimal"
+    assemblyFileNames = getListOfFiles(assemblyDir)
+    hexFileNames = getListOfFiles(hexaDir)
 
     count = 0
     for fileName in hexFileNames:
         if fileName not in assemblyFileNames:
-            newAssemblyFile = File(fileName)
-            newAssemblyFile.generateAssembly()
-            newAssemblyFile.saveFile()
+            newAssemblyFile = File(fileName, 'h2a')
+            newAssemblyFile.saveAssemblyFile()
             count += 1
     return count
 
