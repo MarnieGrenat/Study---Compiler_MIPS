@@ -1,3 +1,20 @@
+# Arquivo de teste
+main:
+    or $t0, $zero, $t1     # Bitwise OR
+    and $t2, $t0, $t3     # Bitwise AND
+    sub $t4, $t2, $t1     # Subtract
+    sltiu $t5, $t4, 10    # Set on Less Than Immediate Unsigned
+    # lw $t6, 0($t7)        # Load Word
+    # sw $t8, 4($t9)        # Store Word
+    #beq $t10, $t11, label # Branch if Equal
+    #j loop                # Jump to loop
+
+label:
+    # Some instructions here
+
+loop:
+    # Some instructions here
+=======
 .text
 .globl main
 
@@ -22,4 +39,3 @@ label:
   # outro comentário
   sub $t6, $t7, $t8
   j end_File # Outrocomentario
-

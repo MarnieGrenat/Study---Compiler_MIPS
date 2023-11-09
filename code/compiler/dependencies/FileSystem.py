@@ -1,54 +1,65 @@
-from Debugger import logE, logW, logI, logD, logV
-from Assembly import Assembly
-from Hex import Hex
+from compiler.dependencies.Error import Error
+from compiler.dependencies.Debugger import logE, logW, logI, logD, logV
+from compiler.dependencies.Assembly import Assembly
+from compiler.dependencies.Hex import Hex
+from os.path import join
+class File():
+	def __init__(self, fileName: str, type:str) -> None:
+		self.name = fileName
+		if type == 'a2h':
+			self.assembly = Assembly(self.getAssemblyContent())
+			self.hexa = self.assembly.getHexaCode()
 
-class File(Assembly, Hex):
-	def __init__(self, name:str) -> None:
-		self.name = name
-		self.assembly_path = r"../../assembly"
-		self.hexa_path =  r"../../hexadecimal"
-		self.assembly = self.createAssemblyObject()
-		self.hex = self.createHexObject()
+		elif type == 'h2a':
+			self.hexa = Hex(self.getHexaContent())
+			self.assembly = self.hexa.getAssemblyCode()
 
-	def createAssemblyObject(self) -> Assembly:
-		return Assembly(self.getContent(self.assembly_path))
-		return self.cleanAssemblyCode(content)
+		else:
+			logE(f"Tipo de arquivo inválido: {type}")
+			raise Error("Tipo de arquivo inválido.")
 
 
-	def createHexObject(self) -> Hex:
-		return Hex(self.getContent(self.hexa_path))
+	def saveHexFile(self) -> None:
+		path = join(r"hexadecimal", self.name)
+		with open((path), "w") as file:
+			file.write(self.concatCode(self.hexa))
 
-	def getListOfFiles(self, path:str) -> list:
-    	return listdir(path)
+	def saveAssemblyFile(self) -> None:
+		path = join("assembly", self.name)
+		with open((path), "w") as file:
+			file.write(self.assembly.getAssemblyCode())
 
-	def saveFile(self) -> None:
-		with open((self.to_file + "/" + self.name), "w") as file:
-			file.write(self.CodeInHexa())
-   
-	def getContent(self, path:str) -> list:
+
+	def getAssemblyContent(self) -> list:
+		path = join(r"assembly", self.name)
+		return self.readContent(path)
+
+	def getHexaContent(self) -> list:
+		path = join(r"hexadecimal", self.name)
+		return self.readContent(path)
+
+	def concatCode(self, codeList:list) -> str:
+		code = ""
+		for line in codeList:
+			code += line + "\n"
+		return code
+
+	def readContent(self, path: str) -> list:
+		# path = join(path, self.name)
 		try:
-			logI(f"Existe arquivo no path! Lendo arquivo com PATH: {path+"/"+self.name}")
-			with open((path + "/"+ self.name), "r") as file:
+			logI(f"Existe arquivo no path! Lendo arquivo com PATH: {path}")
+			with open((path), "r") as file:
 				content = file.readlines()
-				breakCodeIntoList(self, content)
+				return self.breakCodeIntoList(content)
 		except IOError:
-			logI(f"Arquivo não existente. Enviando conteúdo vazio. PATH: {path+"/"+self.name}")
+			logI(f"Arquivo não existente. Enviando conteúdo vazio. PATH: {path}")
 			content = []
 		return content
-			
+
 	def breakCodeIntoList(self, code) -> list:
 		cleanedCode = []
 		for codeLine in code:
-			# Remover espaços em branco à esquerda e à direita da linha
 			codeLine = codeLine.strip()
-			# Verificar se a linha não está vazia após a remoção de espaços
 			if codeLine and not codeLine.startswith("#"):
-				# Adicionar a linha limpa à lista
 				cleanedCode.append(codeLine)
 		return cleanedCode
-
-
-from Debugger import logE, logW, logI, logD, logV
-
-
-
