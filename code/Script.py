@@ -19,3 +19,4 @@ def main() -> None:
 # Execução do programa
 if (__name__ == '__main__'):
 	main()
+

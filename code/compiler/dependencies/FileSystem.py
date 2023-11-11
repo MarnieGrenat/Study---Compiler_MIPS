@@ -18,11 +18,16 @@ class File():
 			logE(f"Tipo de arquivo inválido: {type}")
 			raise Error("Tipo de arquivo inválido.")
 
+	def saveBinaryFile(self) -> None:
+		path = join(r"binary", self.name)
+		with open((path[:-4]+"txt"), "w") as file:
+			file.write(self.assembly.getBinaryCode())
 
 	def saveHexFile(self) -> None:
 		path = join(r"hexadecimal", self.name)
-		with open((path), "w") as file:
-			file.write(self.concatCode(self.hexa))
+		with open((path[:-4]+"txt"), "w") as file:
+			file.write(self.hexa)#concatCode(self.hexa))
+		self.saveBinaryFile()
 
 	def saveAssemblyFile(self) -> None:
 		path = join("assembly", self.name)

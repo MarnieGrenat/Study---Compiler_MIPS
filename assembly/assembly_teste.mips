@@ -14,28 +14,3 @@ label:
 
 loop:
     # Some instructions here
-=======
-.text
-.globl main
-
-endFile:
-			# Termina Programa
-			#li 			$v0, 10
-      #Vou considerar syscall como finalizacao de código pois não traduzo load immediate
-			syscall
-
-main:  # este é um comentário
-  or $t0, $t1, $t2
-  and $t3, $t4, $t5
-  # Isso é um comentário também
-  sub $t6, $t7, $t8
-  sltiu $t9, $t0, 10
-  lw $t0, 0($t1)
-  sw $t2, 4($t3)
-  beq $t4, $t5, label
-
-
-label:
-  # outro comentário
-  sub $t6, $t7, $t8
-  j end_File # Outrocomentario
