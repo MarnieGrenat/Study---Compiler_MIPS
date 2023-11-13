@@ -36,7 +36,7 @@ Para utilizar este script, siga as seguintes etapas:
     Para executar o script, basta rodar o arquivo `run.bash`.
 
 #### Outras alternativas
-Caso os arquivos .bat e .bash não estejam funcionais, é possível rodar o script utilizando o terminal, entrando no repositório `./code` e enviando o comando `python Script.py`.
+Caso os arquivos .bat e .bash não estejam funcionais, é possível rodar o script utilizando o terminal, entrando no repositório do projeto e enviando o comando `python code\Script.py`.
 
 
 ## Observações
