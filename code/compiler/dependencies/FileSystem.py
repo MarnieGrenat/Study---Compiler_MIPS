@@ -20,14 +20,14 @@ class File():
 
 	def saveBinaryFile(self) -> None:
 		path = join(r"binary", self.name)
-		with open((path[:-4]+"txt"), "w") as file:
+		with open((path[:-4]+"bin"), "w") as file:
 			file.write(self.assembly.getBinaryCode())
 
 	def saveHexFile(self) -> None:
 		path = join(r"hexadecimal", self.name)
 		with open((path[:-4]+"txt"), "w") as file:
 			file.write(self.hexa)#concatCode(self.hexa))
-		self.saveBinaryFile()
+		#self.saveBinaryFile()
 
 	def saveAssemblyFile(self) -> None:
 		path = join("assembly", self.name)

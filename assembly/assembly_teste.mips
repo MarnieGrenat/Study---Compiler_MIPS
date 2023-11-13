@@ -1,13 +1,17 @@
 # Arquivo de teste
+.text
 main:
-    or $t0, $zero, $t1     # Bitwise OR
-    and $t2, $t0, $t3     # Bitwise AND
-    sub $t4, $t2, $t1     # Subtract
-    sltiu $t5, $t4, 10    # Set on Less Than Immediate Unsigned
-    # lw $t6, 0($t7)        # Load Word
-    # sw $t8, 4($t9)        # Store Word
-    #beq $t10, $t11, label # Branch if Equal
-    #j loop                # Jump to loop
+        # R Type
+        or $t0, $zero, $t1     # Bitwise OR
+        and $t2, $t0, $t3     # Bitwise AND
+        sub $t4, $t2, $t1     # Subtract
+        # I Type
+        sltiu $t5, $t4, 10    # Set on Less Than Immediate Unsigned
+        lw $t6, 0($t7)        # Load Word
+        sw $t8, 4($t9)        # Store Word
+	    beq $t8, $t9, label # Branch if Equal
+        # J Type
+        j loop                # Jump to loop
 
 label:
     # Some instructions here

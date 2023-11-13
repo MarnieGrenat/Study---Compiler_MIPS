@@ -12,11 +12,9 @@ O único arquivo que o usuário precisa rodar é esse, Script.py.
 def main() -> None:
 	countGeneratedHexadecimal = c.generateHexadecimalIfNecessary()
 	# countGeneratedAssembly = c.generateAssemblyIfNecessary()
-
 	# c.printLogInformationOnTerminal(countGeneratedHexadecimal, countGeneratedAssembly)
 
 
 # Execução do programa
 if (__name__ == '__main__'):
 	main()
-

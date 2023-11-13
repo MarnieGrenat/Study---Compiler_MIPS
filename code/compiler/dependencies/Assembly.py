@@ -1,6 +1,7 @@
 from compiler.dependencies.Error import Error
 from compiler.dependencies.Debugger import logE, logW, logI, logD, logV
 
+# TODO: Arrumar endereçamento de labels
 class Assembly:
     def __init__(self, assemblyCode: str) -> None:
         self.assemblyCode = assemblyCode
@@ -8,56 +9,56 @@ class Assembly:
         self.binaryCode = self.generateBinary()
         self.hexCode = self.generateHexa()
 
+
     def findAllLabels(self) -> dict:
         ''' Itera todo o código e encontra strings que termina com ':' e adiciona em um dicionário. com o endereço da linha.'''
         labels = {}
-        address = 4194304 - 4    # Para compensar o incremento do endereço no primeiro loop
+        address = 4194304
 
         for codeLine in self.assemblyCode:
-            codeLine = codeLine.strip()
-            if codeLine.endswith(':'):
-                labels[codeLine] = hex(address)
+            codeLine = self.tokenize(codeLine)
+            firstToken = codeLine[0]
+            logV(f"Primeiro token: {firstToken}")
+            if str(firstToken).endswith(':') and firstToken[0] != '.':           # é um label!
+                labels[firstToken[:-1]] = address
                 logV("Label encontrada: " + str(labels))
-            address += 4
+            else:
+                if firstToken[0] != '.':
+                    logV('codeline: ' + str(codeLine))
+                    address += 4
+            if (firstToken[:-1] in labels) and (len(codeLine) > 1):
+                logV('codeline: ' + str(codeLine))
+                logV("Label com código na mesma linha. Adicionando ao endereço.")
+                address += 4
         return labels
 
     def generateHexa(self) -> str:
         hexa = ""
-        for codeLine in self.assemblyCode:
-            logV(f"Code line: {codeLine}")
-            tokens = self.tokenize(codeLine)
-            logV(f"Tokens: {tokens}")
-
-            binary = self.translateTokens(tokens)
-            if binary != '':
-                hexLine = hex(int(binary, 2))
-                hexa += hexLine
-                hexa += "\n"
-                logV(f"Hex gerado: {hex}")
-            else:
-                logV("Linha vazia. Não adicionando ao hex.")
+        binary = self.binaryCode.split("\n")
+        binary = [line for line in binary if line]
+        for line in binary:
+            hexa += hex(int(line, 2)) + "\n"
         return hexa
 
     def generateBinary(self) -> str:
         binary = ""
         for codeLine in self.assemblyCode:
-            tokens = self.tokenize(codeLine)
+            tokens = self.tokenize(codeLine, echo=0)
             logV(f"Tokens: {tokens}")
-
             binary += self.translateTokens(tokens)
-            logV(f"Binary gerado: {binary}")
-            # binary to hex
             binary += "\n"
+        logV(f"Binary gerado: {binary}")
         return binary
 
-    def tokenize(self, codeLine: str) -> list:
+    def tokenize(self, codeLine: str, echo:bool=0) -> list:
         codeLine = codeLine.replace(",", "")
         tokens = codeLine.split()
-        return self.removeCommentariesFromTokens(tokens)
+        return self.removeCommentariesFromTokens(tokens, echo)
 
-    def removeCommentariesFromTokens(self, tokens) -> list:
+    def removeCommentariesFromTokens(self, tokens, echo:bool=0) -> list:
         if '#' in tokens:
-            logV(f"Comentário encontrado. Retirando tokens a partir de #.")
+            if echo:
+                logV(f"Comentário encontrado. Retirando tokens a partir de #.")
             tokens = tokens[:tokens.index('#')]
         return tokens
 
@@ -66,7 +67,7 @@ class Assembly:
     def getAssemblyCode(self) -> str:
         codeInString = ""
         for code in self.assemblyCode:
-            codeInString += code + "\n"
+            codeInString += code
         return codeInString
 
     def getBinaryCode(self) -> str:
@@ -78,28 +79,28 @@ class Assembly:
     def translateTokens(self, tokens: list) -> str:  # TODO: Verificar LW e SW
         '''Peneira para as funções de tradução de tipos.'''
         opCodeToken = tokens[0]
+        if opCodeToken[0] == '.':
+            logV('Directive encontrado e ignorado com sucesso.')
+            return ''
+        if opCodeToken[:-1] in self.labels:
+            if len(tokens) > 1:
+                logV("Label encontrada com código na mesma linha. Retornando código.")
+                tokens = tokens[1:]
+                opCodeToken = tokens[0]
+
+            else:
+                logV("Label encontrada. Retornando vazio.")
+                return ''
+
         logV(f"Verificando opCode: {opCodeToken}")
-        if opCodeToken in self.labels:
-            logV("Label encontrada. Retornando vazio.")
-            return ""
         if opCodeToken in ['or', 'and', 'sub']:
-            return self.generateRType(tokens)
+            return self.generateRType(tokens) #+ "\n"
         if opCodeToken in ['lw', 'sw', 'beq', 'sltiu']:
-            return self.generateIType(tokens)
+            return self.generateIType(tokens) #+ "\n"
         if opCodeToken in ['j']:
-            return self.generateJType(tokens)
+            return self.generateJType(tokens) #+ "\n"
         else:
             raise Error(f"Comentário indesejado, label, ou linha vazia. {tokens}")
-
-    def generateJType(self, token: list) -> str:
-        '''[opCode]+[address]'''
-        logV(f"Traduzindo J Type: {token}\n")
-        opCode = self.translateOpCode(token[0])
-        jumpAddress = self.getJumpAddress(token[1])
-        binary = opCode + jumpAddress
-        logV(f"Binary tipo J gerado: {binary}")
-
-        return self.VerifyBinary(binary)
 
     def generateRType(self, token: list) -> str:
         '''[opCode]+[rd]+[rs]+[rt]+[shamt]+[funct]'''
@@ -117,19 +118,84 @@ class Assembly:
         '''[opCode]+[rs]+[rt]+[immediate]'''
         logV(f"Traduzindo I Type: {token}\n")
         binary = self.translateOpCode(str(token[0]))
-        binary += self.translateRegister(str(token[2]))
-        binary += self.translateRegister(str(token[1]))
-        binary += self.translateImmediate(int(token[3]))
+
+        rsToken = immediateToken = ""
+        rtToken = str(token[1])
+        if "(" in token[2] and ")" in token[2]:         # LW SW
+            rsToken, immediateToken = self.extractTokens(token[2])
+        else:                                           # BEQ SLTIU
+            rsToken, immediateToken = token[2], token[3]
+            if token[0] == 'beq':
+                rsToken, rtToken = token[1], token[2]
+                immediateToken = self.countOperations(token)
+            else:
+                rsToken, rtToken = token[2], token[1]
+
+        binary += self.translateRegister(rsToken)
+        binary += self.translateRegister(rtToken)
+        binary += self.translateImmediate(immediateToken)
         logV(f"Binary tipo I gerado: {binary}")
         return self.VerifyBinary(binary)
 
+    def extractTokens(self, token: str) -> tuple:
+        try:
+            immediate = token.split('(')[0]
+            rs = token.split('(')[1].split(')')[0]
+            logI(f"rs: {rs}, immediate: {immediate}")
+            return rs, int(immediate)
+        except IndexError:
+            raise Error("Erro ao tentar extrair os tokens dentro e fora dos parênteses.")
+
+    def countOperations(self, token: list) -> int:
+        tokens = []
+        opCount = 0
+        beqLineNumber = 0
+        labelLineNumber = 0
+
+        logV(f"Token: {token}")
+        for line in self.assemblyCode:
+            tokenized = self.tokenize(line, echo=0)
+            if tokenized[0][0] != '.': #and tokenized[0][-1] != ':':
+                tokens.append(tokenized)
+
+        for t in tokens:
+            opCount += 1
+            logV(f'Tokens novos: {t}')
+            if t == token and not beqLineNumber:
+                logV(f"Token encontrado: {t}. Valor: {opCount}")
+                beqLineNumber = opCount
+            logV(f"Token: {t[:-1]}, token: {token[-1]}")
+
+            if t[0][:-1] == token[-1] and not labelLineNumber:
+                logV(f"label encontrado: {token[-1]}. Valor: {opCount}")
+                labelLineNumber = opCount
+            if (t[0][-1] == ':'):
+                opCount-=1
+
+            if beqLineNumber and labelLineNumber:
+                logV("Tokens encontrados. Quebrando loop.")
+                logV("Retornando valor: " + str(labelLineNumber - beqLineNumber))
+                return labelLineNumber - beqLineNumber
+
+
+        raise Error(f"Token {token} não encontrado.")
+
+    def generateJType(self, token: list) -> str:
+        '''[opCode]+[address]'''
+        logV(f"Traduzindo J Type: {token}\n")
+        opCode = self.translateOpCode(token[0])
+        jumpAddress = self.getJumpAddress(token[1])
+        binary = opCode + jumpAddress
+        logV(f"Binary tipo J gerado: {binary}")
+        return self.VerifyBinary(binary)
+
     def getJumpAddress(self, label: str) -> str:
-        logV(f"Retornando Label's Addr.{bin(self.consultLabelAddress(label))}")
         jumpAddr = bin(self.consultLabelAddress(label))
+        logV(f"Retornando Label's Addr.{jumpAddr}")
         return self.first26Bits(jumpAddr)
 
-    def consultLabelAddress(self, label) -> int:
-        return self.labels[label].value
+    def consultLabelAddress(self, label: str) -> int:
+        return self.labels[label]
 
     def appendShamt(self, shamtCode: str) -> str:
         logV("Não é necessário setar shamt para as funções suportadas nessa versão. Retornando '0b0'")
@@ -151,11 +217,26 @@ class Assembly:
                 raise Error(f"Comando {functionCode} não reconhecido.")
                 #### I TYPE ####
 
-    def translateImmediate(self, immediate: int) -> str:
+    def translateImmediate(self, immediate) -> str:
+        # verificar se tem palavras dentro da string
         logV(f"Traduzindo immediate: {immediate}")
-        logV(f"Binário do immediate: {bin(immediate)}")
-        return self.first16Bits(bin(immediate))
+        logV(f"Type: {type(immediate)}")
+        if immediate in self.labels:
+            immediate = self.labels[immediate] - 4194304 # A partir do endereço 0x400000
+            logV(f"Immediate encontrado no mapeamento de labels. Retornando valor: {self.first16Bits(bin(immediate))}")
+            return self.first16Bits(bin(immediate))
 
+        try:
+            immediate = int(immediate)
+        except ValueError:
+            raise Error(f"Label Immediate {immediate} não reconhecido.")
+
+        if isinstance(immediate, int):
+            logV(f"Immediate: {bin(immediate)}")
+            logV(f"Immediate é um número. Retornando valor: {self.first16Bits(bin(immediate))}")
+            return self.first16Bits(bin(immediate))
+        else:
+            raise Error(f"Valor Immediate {immediate} não reconhecido.")
         #### FUNCTIONS TO SUPPORT TRANSLATION OF ALL TYPES  ####
 
     def translateOpCode(self, opCode: str) -> str:
@@ -195,7 +276,7 @@ class Assembly:
 
         # translate register
         if register.isdigit():
-            return str(bin(int(register)))
+            return self.first5Bits(bin(int(register)))
 
         if register in ['zero', 'at', 'gp', 'sp', 'fp', 'ra']:
             registerBin = self.first5Bits(self.translateRegisterSpecialCases(register))
@@ -252,7 +333,7 @@ class Assembly:
     def translateRegisterT(self, register: int) -> str:
         if (register <= 7 and register >= 0):
             return bin(8 + self.verifyRegister(register, maxValue=7))
-        return bin(24 + self.verifyRegister(register, maxValue=9, minValue=8))
+        return bin(16 + self.verifyRegister(register, maxValue=9, minValue=8))
 
     def translateRegisterS(self, register: int) -> str:
         registerValue = 16 + self.verifyRegister(register, maxValue=6)
@@ -270,8 +351,11 @@ class Assembly:
     def first6Bits(self, binary: str) -> str:
         return binary[2:].zfill(6)
     def first5Bits(self, binary: str) -> str:
-        return binary[2:].zfill(5)
+        return (binary[2:]).zfill(5)
     def first16Bits(self, binary: str) -> str:
         return binary[2:].zfill(16)
     def first26Bits(self, binary: str) -> str:
-        return binary[2:].zfill(26)
+        logI(f"BIN ADDR gerado: {'0000'+binary[2:]+'00'}")
+        address = binary[2:].zfill(32)
+        logI(f"address gerado: {address[4:-2]}")
+        return address[4:-2]
