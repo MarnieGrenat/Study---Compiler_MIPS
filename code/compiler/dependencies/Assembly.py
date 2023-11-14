@@ -218,8 +218,6 @@ class Assembly:
 
     def translateImmediate(self, immediate) -> str:
         # verificar se tem palavras dentro da string
-        if isinstance(immediate, int) and immediate < 0:
-            immediate = self.TwoComplement(immediate)
         logV(f"Traduzindo immediate: {immediate}")
         logV(f"Type: {type(immediate)}")
         if immediate in self.labels:
@@ -227,6 +225,9 @@ class Assembly:
             logV(f"Immediate encontrado no mapeamento de labels. Retornando valor: {self.first16Bits(bin(immediate))}")
             return self.first16Bits(bin(immediate))
         try:
+            if int(immediate) < 0:
+                logE(f"Passei aqui, immediate: {immediate}")
+                return self.TwoComplement(immediate)
             immediate = int(immediate)
         except ValueError:
             raise Error(f"Label Immediate {immediate} não reconhecido.")
@@ -239,15 +240,24 @@ class Assembly:
             raise Error(f"Valor Immediate {immediate} não reconhecido.")
         #### FUNCTIONS TO SUPPORT TRANSLATION OF ALL TYPES  ####
 
-    def TwoComplement(self, immediate: int) -> int:
-        ''' ref: https://www.adamsmith.haus/python/answers/how-to-take-two%27s-complement-in-python '''
-        immediate = bin(immediate * -1)
-        immediate = immediate[3:]
-        immediate = int(immediate, 2)
-        immediate = ~immediate
-        immediate += 1
-        logV(f"Valor negavito. Retornando Complemento de 2: {immediate}")
-        return immediate
+    def TwoComplement(self, immediate: int) -> str:
+        '''ref: https://www.adamsmith.haus/python/answers/how-to-take-two's-complement-in-python'''
+        if immediate > 0:
+            raise Error(f"Valor inválido para operação de complemento de dois: {immediate}")
+        immediate *=-1
+        immediate -= 1
+
+        immediateBin = ''
+        immediate = bin(immediate)[2:].zfill(16)
+
+        for b in immediate:
+            if b == "0":
+                immediateBin += "1"
+            else:
+                immediateBin += "0"
+
+        logI(f"immediate Complemento: {immediateBin}")
+        return immediateBin
 
     def translateOpCode(self, opCode: str) -> str:
         opCodeMapping = {
