@@ -155,11 +155,12 @@ class Assembly:
         logV(f"Token: {token}")
         for line in self.assemblyCode:
             tokenized = self.tokenize(line, echo=0)
-            if tokenized[0][0] != '.': #and tokenized[0][-1] != ':':
+            if tokenized[0][0] != '.':
                 tokens.append(tokenized)
 
         for t in tokens:
-            opCount += 1
+            if (t[0][-1] != ':'):   # Contabilizo apenas as linhas que não são labels
+                opCount += 1
             logV(f'Tokens novos: {t}')
             if t == token and not beqLineNumber:
                 logV(f"Token encontrado: {t}. Valor: {opCount}")
@@ -169,13 +170,11 @@ class Assembly:
             if t[0][:-1] == token[-1] and not labelLineNumber:
                 logV(f"label encontrado: {token[-1]}. Valor: {opCount}")
                 labelLineNumber = opCount
-            if (t[0][-1] == ':'):
-                opCount-=1
 
             if beqLineNumber and labelLineNumber:
                 logV("Tokens encontrados. Quebrando loop.")
                 logV("Retornando valor: " + str(labelLineNumber - beqLineNumber))
-                return labelLineNumber - beqLineNumber
+                return (labelLineNumber - beqLineNumber)
 
 
         raise Error(f"Token {token} não encontrado.")
@@ -219,13 +218,14 @@ class Assembly:
 
     def translateImmediate(self, immediate) -> str:
         # verificar se tem palavras dentro da string
+        if isinstance(immediate, int) and immediate < 0:
+            immediate = self.TwoComplement(immediate)
         logV(f"Traduzindo immediate: {immediate}")
         logV(f"Type: {type(immediate)}")
         if immediate in self.labels:
             immediate = self.labels[immediate] - 4194304 # A partir do endereço 0x400000
             logV(f"Immediate encontrado no mapeamento de labels. Retornando valor: {self.first16Bits(bin(immediate))}")
             return self.first16Bits(bin(immediate))
-
         try:
             immediate = int(immediate)
         except ValueError:
@@ -238,6 +238,16 @@ class Assembly:
         else:
             raise Error(f"Valor Immediate {immediate} não reconhecido.")
         #### FUNCTIONS TO SUPPORT TRANSLATION OF ALL TYPES  ####
+
+    def TwoComplement(self, immediate: int) -> int:
+        ''' ref: https://www.adamsmith.haus/python/answers/how-to-take-two%27s-complement-in-python '''
+        immediate = bin(immediate * -1)
+        immediate = immediate[3:]
+        immediate = int(immediate, 2)
+        immediate = ~immediate
+        immediate += 1
+        logV(f"Valor negavito. Retornando Complemento de 2: {immediate}")
+        return immediate
 
     def translateOpCode(self, opCode: str) -> str:
         opCodeMapping = {

@@ -9,12 +9,12 @@ main:
         sltiu $t5, $t4, 10    # Set on Less Than Immediate Unsigned
         lw $t6, 0($t7)        # Load Word
         sw $t8, 4($t9)        # Store Word
-	    beq $t8, $t9, label # Branch if Equal
         # J Type
-        j loop                # Jump to loop
+       	j loop                # Jump to loop
 
 label:
     # Some instructions here
 
 loop:
+	beq $t8, $t9, label # Branch if Equal
     # Some instructions here
