@@ -1,7 +1,7 @@
 # Montagem e Desmontagem de Código Assembly MIPS
 **Autor:** Gabriela Dellamora Paim
 
-**Versão:** 1.0.1
+**Versão:** 1.0.2
 
 ## Descrição
 O projeto `Montagem e Desmontagem de Código Assembly MIPS` consiste em um script que realiza a conversão entre código assembly e código binário (salvo em hexadecimal), bem como a conversão inversa de (hexadecimal para binário e de) binário para assembly.
