@@ -73,7 +73,7 @@ class Assembly:
     def getHexaCode(self) -> list:
         return self.generateHexa()
 
-    def translateTokens(self, tokens: list) -> str:  # TODO: Verificar LW e SW
+    def translateTokens(self, tokens: list) -> str:
         '''Peneira para as funções de tradução de tipos.'''
         opCodeToken = tokens[0]
         if opCodeToken[0] == '.':

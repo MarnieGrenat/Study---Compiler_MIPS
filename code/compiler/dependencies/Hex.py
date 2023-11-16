@@ -5,9 +5,9 @@ from compiler.dependencies.Debugger import logE, logW, logI, logD, logV
 class Hex:
     def __init__(self, hexCode: str) -> None:
         self.hexCode = hexCode
+        self.labels = []
         self.binaryCode = self.generateBinary(self.hexCode)
         self.assembly = self.generateAssembly(self.binaryCode)
-        self.labels = []
 
     def generateBinary(self, hexCode) -> list:
         binary = []
@@ -21,13 +21,52 @@ class Hex:
         return str(line)
 
     def generateAssembly(self, binaryList:list) -> str:
-        assembly = ".text:\n\nmain:\n"
+        ## TODO: Tratar sinal de Jump ou BEQ
+        assembly = ""
         for binary in binaryList:
             type = self.guessTokenType(binary)
             aux = self.getAllTokens(type, binary) + "\n"
             logI(f"Comando traduzido: \n{aux}")
             assembly += aux
+        return ".text:\n\nmain:\n" + self.treatAddresses(assembly)
+
+    def treatAddresses(self, assembly:str) -> str:
+        assembly = assembly.splitlines()
+        for line in assembly:
+            logI(f"Commando de jump {line[0]} ou beq: {line[:4]}")
+            if line[-1] == ":":
+            if line[0] == 'j' or line[:4] == 'beq':
+                assembly = self.generateLabels(assembly, line, line[0])
+        logI(f"Assembly com labels: \n{assembly}")
         return assembly
+
+    def generateLabels(self, assembly:list, line:str, type:str) -> str:
+        labelAddr = int(line[-1])
+        labelName = 'L' + str(len(self.labels))
+        assembly = self.__setLabel(assembly, line, labelAddr, labelName)
+        #list to str
+        codeLine = ""
+        for command in assembly:
+            codeLine += command + '\n'
+        return codeLine
+
+
+    def __setLabel(self, assembly:list, line:str, labelAddr:int, labelName:str) -> list:
+        if labelName not in self.labels:
+            self.labels.append(labelName)
+            logV(f"Label adicionada. ao array de labels. {labelName}")
+        else:
+            raise Error(f"Label {labelName} já existe.")
+        assembly[labelAddr] = f"{labelName}: \n {assembly[labelAddr]}"
+        for command in assembly:
+            if command == line:
+                command = command.split()
+                command[-1] = labelName
+                command = ' '.join(command)
+
+        logI (f"Label {labelName} adicionada na linha: {assembly[labelAddr-1]}")
+        return assembly
+
 
     def guessTokenType(self, binary: str) -> str:
         token = binary[0:6]
@@ -42,13 +81,19 @@ class Hex:
     ### GETTERS ###
 
     def getBinaryCode(self) -> list:
-        return self.binaryCode
+        if self.binaryCode:
+            return self.binaryCode
+        raise Error("Código binário não gerado.")
 
     def getHexCode(self) -> str:
-        return self.hexCode
+        if self.hexCode:
+            return self.hexCode
+        raise Error("Hex code não capturado. Verifique arquivo.")
 
     def getAssemblyCode(self) -> str:
-        return self.assembly
+        if self.assembly:
+            return self.assembly
+        raise Error("Assembly não gerado.")
 
     def getAllTokens(self, type: str, binary: str) -> str:
         logI(f"Traduzindo tipo {type}. Comando: {binary}")
@@ -59,6 +104,7 @@ class Hex:
             return self.translateIType(binary)
         if type == 'J':
             return self.translateJType(binary)
+        raise Error(f"Tipo de binário não encontrado.")
 
     def translateRType(self, binary) -> str:
         opCode = self.generateOpCodeR(binary)
@@ -87,13 +133,17 @@ class Hex:
         return token
 
     def getRegisterBinary(self, binary: str, position: int):
+        if len(binary) < 32:
+            raise Error(f"Binário inválido: {binary}")
         match position:
             case 1:
-                return binary[6:11]      # primeiro reg
+                return binary[6:11]       # primeiro reg
             case 2:
                 return binary[11:16]      # segundo reg
             case 3:
                 return binary[16:21]      # terceiro reg
+            case _:
+                raise Error(f"Posição {position} não encontrada. Parâmetro inválido.")
 
     def tokenizeRegister(self, binary: str) -> str:
         register =  int(binary, 2)
@@ -130,14 +180,13 @@ class Hex:
         return line
 
     def generateImmediateFormat(self, binary) -> str:
-        '''OP rs,rt,imm'''
         line = ''
         opCode = self.getOpCodeI(binary)
         rs = self.generateRegister(binary, 1)
         rt = self.generateRegister(binary, 2)
 
-        if opCode == 'beq':  # TODO: Gerar Label
-            self.generateLabel(binary[16:])
+        if opCode == 'beq':
+            #self.generateLabel(binary[16:])
             offset  = self.getOffsetLabel(binary[16:])
             line = f"{opCode} {rs}, {rt}, {offset}"
 
@@ -162,15 +211,12 @@ class Hex:
 
     def getOffsetLabel(self, binary: str) -> dict:
         if binary[0] == '1':
-            binary = self.twosComplement(binary)
-        else:
-            labelName = 'L' + str(len(self.labelCounter))
-
-            return {labelName: binary}
+            return self.twosComplement(binary)
+        return int(binary, 2)
 
     def twosComplement(self, immediate: str) -> int:
         '''ref: https://www.adamsmith.haus/python/answers/how-to-take-two's-complement-in-python'''
-        immediateBin = ''
+        immediateBin = '' #Fazer operações bitwise no python é horroroso...
         for b in immediate:
             if b == "0":
                 immediateBin += "1"
@@ -180,31 +226,27 @@ class Hex:
         immediate = int(immediateBin, 2)
 
         immediate *=-1
-        immediate += 1
-        logI(f"immediate Complemento: {immediateBin}")
-        if immediate > 0:
+        immediate -= 1
+        logI(f"immediate: {immediate}")
+        if immediate >= 0:
             raise Error(f"Valor inválido para operação de complemento de dois: {immediate}")
-        return immediateBin
-
-    def generateLabel(self, binary: str) -> str:
-        #TODO: Iterar sobre o arquivo final e gerar label
-        pass
+        return immediate
 
     def translateJType(self, binary):
         opCode = self.getOpCodeJ(binary)
-        address = self.generateJLabel(int(binary[6:], 2))
+        address = self.generateJLabel(binary[6:])
         return f"{opCode} {address}"
 
     def getOpCodeJ(self, token:str):
-        token [0:6]
+        token = token[0:6]
         if token == '000010':
-            return '000010'
+            return 'j'
         raise Error(f"Comando não reconhecido: {token}")
 
-    def generateJLabel(self, address: int) -> str:
+    def generateJLabel(self, address: str) -> str:
+        address = f"0000{address}00"
+        logV(f"Endereço recebido: {address}")
         address = int(address, 2)
         address -= 4194304
-        aux = self.binaryCode[address]
-        self.binaryCode[address] = 'L' + str(len(self.labels))
-        for line in self.binaryCode[address+1:]:
-            aux2 = line
+        address //= 4
+        return address

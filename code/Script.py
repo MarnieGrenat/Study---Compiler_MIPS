@@ -10,11 +10,13 @@ O único arquivo que o usuário precisa rodar é esse, Script.py.
 
 
 def main() -> None:
-	countGeneratedHexadecimal = c.generateHexadecimalIfNecessary()
-	# countGeneratedAssembly = c.generateAssemblyIfNecessary()
+	# countGeneratedHexadecimal = c.generateHexadecimalIfNecessary()
+	countGeneratedAssembly = c.generateAssemblyIfNecessary()
 	# c.printLogInformationOnTerminal(countGeneratedHexadecimal, countGeneratedAssembly)
 
 
 # Execução do programa
 if (__name__ == '__main__'):
 	main()
+
+#00000100000000000000000111
