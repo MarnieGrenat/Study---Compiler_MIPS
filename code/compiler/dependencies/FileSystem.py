@@ -13,7 +13,6 @@ class File():
 		elif type == 'h2a':
 			self.hexa = Hex(self.getHexaContent())
 			self.assembly = self.hexa.getAssemblyCode()
-
 		else:
 			logE(f"Tipo de arquivo inválido: {type}")
 			raise Error("Tipo de arquivo inválido.")
@@ -26,13 +25,13 @@ class File():
 	def saveHexFile(self) -> None:
 		path = join(r"hexadecimal", self.name)
 		with open((path[:-4]+"txt"), "w") as file:
-			file.write(self.hexa)#concatCode(self.hexa))
+			file.write(self.hexa)
 		#self.saveBinaryFile()
 
 	def saveAssemblyFile(self) -> None:
 		path = join("assembly", self.name)
-		with open((path), "w") as file:
-			file.write(self.assembly.getAssemblyCode())
+		with open(path[:-3]+'.mips', "w") as file:
+			file.write(self.assembly)
 
 
 	def getAssemblyContent(self) -> list:
@@ -43,11 +42,11 @@ class File():
 		path = join(r"hexadecimal", self.name)
 		return self.readContent(path)
 
-	def concatCode(self, codeList:list) -> str:
-		code = ""
-		for line in codeList:
-			code += line + "\n"
-		return code
+	# def concatCode(self, codeList:list) -> str:
+	# 	code = ""
+	# 	for line in codeList:
+	# 		code += line + "\n"
+	# 	return code
 
 	def readContent(self, path: str) -> list:
 		# path = join(path, self.name)

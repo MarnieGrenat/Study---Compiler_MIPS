@@ -1,32 +1,43 @@
-from Error import Error
-from Debugger import logD, logE, logI, logV, logW
+from compiler.dependencies.Error import Error
+from compiler.dependencies.Debugger import logE, logW, logI, logD, logV
 
 
 class Hex:
     def __init__(self, hexCode: str) -> None:
-        self.binaryCode = self.generateBinary()
         self.hexCode = hexCode
-        self.assembly = self.generateAssembly()
+        self.binaryCode = self.generateBinary(self.hexCode)
+        self.assembly = self.generateAssembly(self.binaryCode)
         self.labels = []
 
-    def generateBinary(self) -> list:
+    def generateBinary(self, hexCode) -> list:
         binary = []
-        for hexLine in self.hexCode:
-            binary.append(self.hexToBin(hexLine))
+        for hexLine in hexCode:
+            binary.append(self.formatBinary(hexLine))
         return binary
 
-    def hexToBin(line: str) -> str:
+    def formatBinary(self, line: str) -> str:
         line = bin(int(line, 16))
         line = line[2:].zfill(32)
         return str(line)
 
-    def generateAssembly(self) -> str:
-        assembly = ""
-        for binary in self.binary:
-            opCode = self.generateOpCode(binary)
-            assembly += self.translateCommand(opCode, binary)
-            assembly += "\n"
+    def generateAssembly(self, binaryList:list) -> str:
+        assembly = ".text:\n\nmain:\n"
+        for binary in binaryList:
+            type = self.guessTokenType(binary)
+            aux = self.getAllTokens(type, binary) + "\n"
+            logI(f"Comando traduzido: \n{aux}")
+            assembly += aux
         return assembly
+
+    def guessTokenType(self, binary: str) -> str:
+        token = binary[0:6]
+        if token in ['000000']:
+            return 'R'
+        if token in ['000100', '100011', '101011', '001011']:
+            return 'I'
+        if token in ['000010']:
+            return 'J'
+        raise Error(f"Comando {token} não reconhecido.")
 
     ### GETTERS ###
 
@@ -37,44 +48,25 @@ class Hex:
         return self.hexCode
 
     def getAssemblyCode(self) -> str:
-        return self.assemblyCode
+        return self.assembly
 
-    def generateOpcode(self, binary: str) -> str:
-        token = self.binary[0:6]
-
-        opCodeMapping = {
-            '000000': 'or',
-            '000000': 'and',
-            '000000': 'sub',
-
-            '000100': 'beq',
-            '100011': 'lw',
-            '101011': 'sw',
-            '001011': 'sltiu',
-
-            '000010': 'j'
-        }
-        if token in opCodeMapping:
-            logV(
-                f"OpCode encontrado no mapeamento. Retornando valor: {self.first6Bits(opCodeMapping[token])}")
-            return opCodeMapping[token]
-        raise Error(f"Comando {token} não reconhecido.")
-
-    def translateCommand(self, opCode: str, binary: str) -> str:
-        if opCode in ['or', 'and', 'sub']:
+    def getAllTokens(self, type: str, binary: str) -> str:
+        logI(f"Traduzindo tipo {type}. Comando: {binary}")
+        logI(f'Binário recebido: {binary[0:6]}-{binary[6:11]}-{binary[11:16]}-{binary[16:22]}-{binary[22:31]}')
+        if type == 'R':
             return self.translateRType(binary)
-        if opCode in ['beq', 'lw', 'sw', 'sltiu']:
-            return self.translateIType(binary, opCode)
-        if opCode in ['j']:
+        if type == 'I':
+            return self.translateIType(binary)
+        if type == 'J':
             return self.translateJType(binary)
 
     def translateRType(self, binary) -> str:
         opCode = self.generateOpCodeR(binary)
-        rs = self.generateRegister(binary, 0)
-        rt = self.generateRegister(binary, 1)
-        rd = self.generateRegister(binary, 2)
-        line = f"{opCode}, {rs}, {rt}, {rd}"
-        return line
+        rs = self.generateRegister(binary, 1)
+        rt = self.generateRegister(binary, 2)
+        rd = self.generateRegister(binary, 3)
+        lineCode = f"{opCode} {rd}, {rs}, {rt}"
+        return lineCode
 
     def generateOpCodeR(self, binary: str):
         funct = binary[-6:]
@@ -89,58 +81,86 @@ class Hex:
                 raise Error(f"Função não conhecida: {funct}")
 
     def generateRegister(self, binary: str, position: int) -> str:
-        registerBinary = self.getRegisterPosition(binary, position)
-        return self.tokenizeRegister(registerBinary)
-
-    def getRegisterPosition(binary: str, position: int):
-        match position:
-            case 0:
-                return binary[7:11]
-            case 1:
-                return binary[11:16]
-            case 2:
-                return binary[16:21]
-
-    def tokenizeRegister(self, register: str) -> str:
-        token = "$" + int(register, 2)
+        binary = self.getRegisterBinary(binary, position)
+        token = self.tokenizeRegister(binary)
+        logV(f'Registrador {position}: {binary} -> {token}')
         return token
 
-    def generateOpCodeI(self, binary: str, CommandType: str):
-        if CommandType in ['lw', 'sw']:
+    def getRegisterBinary(self, binary: str, position: int):
+        match position:
+            case 1:
+                return binary[6:11]      # primeiro reg
+            case 2:
+                return binary[11:16]      # segundo reg
+            case 3:
+                return binary[16:21]      # terceiro reg
+
+    def tokenizeRegister(self, binary: str) -> str:
+        register =  int(binary, 2)
+        token = "$" + str(register)
+        return token
+
+    def translateIType(self, binary: str) -> str:
+        token = self.generateOpCodeI(binary)
+        if token in ['lw', 'sw']:
             return self.generateBracketsFormat(binary)
-        if CommandType in ['beq', 'sltiu']:
+        if token in ['beq', 'sltiu']:
             return self.generateImmediateFormat(binary)
+        raise Error(f"Comando I não reconhecido: {token}")
+
+    def generateOpCodeI(self, binary: str) -> str:
+        token = binary[0:6]
+        tokenMapping = {
+            '000100': 'beq',
+            '001011': 'sltiu',
+            '100011': 'lw',
+            '101011': 'sw'
+        }
+        if token in tokenMapping:
+            return tokenMapping[token]
+        raise Error(f"Comando I não reconhecido: {token}")
 
     def generateBracketsFormat(self, binary: str) -> str:
         '''OP rt,offset(rs)'''
-        opCode = self.getOpCodeI(binary[0:6])
+        opCode = self.getOpCodeI(binary)
         rs = self.generateRegister(binary, 1)
-        rt = self.generateRegister(binary, 0)
+        rt = self.generateRegister(binary, 2)
         offset = int(binary[16:], 2)
-        line = f"{opCode}, {rt}, {offset}({rs})"
+        line = f"{opCode} {rt}, {offset}({rs})"
         return line
 
     def generateImmediateFormat(self, binary) -> str:
         '''OP rs,rt,imm'''
         line = ''
-        opCode = self.getOpCodeI(binary[0:6])
-        rs = self.generateRegister(binary, 0)
-        rt = self.generateRegister(binary, 1)
-        imm = int(binary[16:], 2)
+        opCode = self.getOpCodeI(binary)
+        rs = self.generateRegister(binary, 1)
+        rt = self.generateRegister(binary, 2)
 
         if opCode == 'beq':  # TODO: Gerar Label
             self.generateLabel(binary[16:])
-            offset  = self.getImmediateRelativeAddr(binary[16:])
-            line = f"{opCode}, {rs}, {rt}, {offset}"
+            offset  = self.getOffsetLabel(binary[16:])
+            line = f"{opCode} {rs}, {rt}, {offset}"
 
         elif opCode == 'sltiu':
-            imm = int(imm, 2)
-            line = f"{opCode}, {rt}, {rs}, {imm}"
+            imm = int(binary[16:], 2)
+            line = f"{opCode} {rt}, {rs}, {imm}"
         else:
             raise Error(f"Comando não reconhecido.{binary}")
-
         return line
-    def getImmediateRelativeAddr(self, binary: str) -> dict:
+
+    def getOpCodeI(self, token:str):
+        token = token[0:6]
+        tokenMapping = {
+            '000100': 'beq',
+            '001011': 'sltiu',
+            '100011': 'lw',
+            '101011': 'sw'
+        }
+        if token in tokenMapping:
+            return tokenMapping[token]
+        raise Error(f"Comando I não reconhecido: {token}")
+
+    def getOffsetLabel(self, binary: str) -> dict:
         if binary[0] == '1':
             binary = self.twosComplement(binary)
         else:
@@ -170,8 +190,22 @@ class Hex:
         #TODO: Iterar sobre o arquivo final e gerar label
         pass
 
-    def TranslateJType(self, binary):
-        opCode = self.getOpCodeJ(binary[0:6])
+    def translateJType(self, binary):
+        opCode = self.getOpCodeJ(binary)
         address = self.generateJLabel(int(binary[6:], 2))
-        return f"{opCode}, {address}"
+        return f"{opCode} {address}"
+
+    def getOpCodeJ(self, token:str):
+        token [0:6]
+        if token == '000010':
+            return '000010'
+        raise Error(f"Comando não reconhecido: {token}")
+
+    def generateJLabel(self, address: int) -> str:
+        address = int(address, 2)
+        address -= 4194304
+        aux = self.binaryCode[address]
+        self.binaryCode[address] = 'L' + str(len(self.labels))
+        for line in self.binaryCode[address+1:]:
+            aux2 = line
 

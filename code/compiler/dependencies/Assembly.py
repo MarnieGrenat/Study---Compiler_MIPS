@@ -1,14 +1,11 @@
 from compiler.dependencies.Error import Error
 from compiler.dependencies.Debugger import logE, logW, logI, logD, logV
-
-# TODO: Arrumar endereçamento de labels
 class Assembly:
     def __init__(self, assemblyCode: str) -> None:
         self.assemblyCode = assemblyCode
         self.labels = self.findAllLabels()
         self.binaryCode = self.generateBinary()
         self.hexCode = self.generateHexa()
-
 
     def findAllLabels(self) -> dict:
         ''' Itera todo o código e encontra strings que termina com ':' e adiciona em um dicionário. com o endereço da linha.'''
@@ -94,11 +91,11 @@ class Assembly:
 
         logV(f"Verificando opCode: {opCodeToken}")
         if opCodeToken in ['or', 'and', 'sub']:
-            return self.generateRType(tokens) #+ "\n"
+            return self.generateRType(tokens)
         if opCodeToken in ['lw', 'sw', 'beq', 'sltiu']:
-            return self.generateIType(tokens) #+ "\n"
+            return self.generateIType(tokens)
         if opCodeToken in ['j']:
-            return self.generateJType(tokens) #+ "\n"
+            return self.generateJType(tokens)
         else:
             raise Error(f"Comentário indesejado, label, ou linha vazia. {tokens}")
 
@@ -306,19 +303,19 @@ class Assembly:
         match register[0]:
             case 'v':
                 logV("Registrador tipo V")
-                registerBin = self.translateRegisterV(int(register[1]))
+                registerBin = self.registerTypeV(int(register[1]))
             case 'a':
                 logV("Registrador tipo A")
-                registerBin = self.translateRegisterA(int(register[1]))
+                registerBin = self.registerTypeA(int(register[1]))
             case 't':
                 logV("Registrador tipo T")
-                registerBin = self.translateRegisterT(int(register[1]))
+                registerBin = self.registerTypeT(int(register[1]))
             case 's':
                 logV("Registrador tipo S")
-                registerBin = self.translateRegisterS(int(register[1]))
+                registerBin = self.registerTypeS(int(register[1]))
             case 'k':
                 logV("Registrador tipo K")
-                registerBin = self.translateRegisterK(int(register[1]))
+                registerBin = self.registerTypeK(int(register[1]))
             case _:
                 raise Error(f"Registrador ${register} não reconhecido.")
         logV(f"Registrador traduzido: {self.first5Bits(registerBin)}")
@@ -342,24 +339,24 @@ class Assembly:
                 raise Error(
                     f"Registrador especial {register} não reconhecido.")
 
-    def translateRegisterV(self, register: int) -> str:
+    def registerTypeV(self, register: int) -> str:
         registerValue = 2 + self.verifyRegister(register, maxValue=1)
         return bin(registerValue)
 
-    def translateRegisterA(self, register: int) -> str:
+    def registerTypeA(self, register: int) -> str:
         registerValue = 4 + self.verifyRegister(register, maxValue=3)
         return bin(registerValue)
 
-    def translateRegisterT(self, register: int) -> str:
+    def registerTypeT(self, register: int) -> str:
         if (register <= 7 and register >= 0):
             return bin(8 + self.verifyRegister(register, maxValue=7))
         return bin(16 + self.verifyRegister(register, maxValue=9, minValue=8))
 
-    def translateRegisterS(self, register: int) -> str:
+    def registerTypeS(self, register: int) -> str:
         registerValue = 16 + self.verifyRegister(register, maxValue=6)
         return bin(registerValue)
 
-    def translateRegisterK(self, register: int) -> str:
+    def registerTypeK(self, register: int) -> str:
         registerValue = 26 + self.verifyRegister(register, maxValue=1)
         return bin(registerValue)
 
