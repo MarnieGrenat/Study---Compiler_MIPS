@@ -208,4 +208,3 @@ class Hex:
         self.binaryCode[address] = 'L' + str(len(self.labels))
         for line in self.binaryCode[address+1:]:
             aux2 = line
-
