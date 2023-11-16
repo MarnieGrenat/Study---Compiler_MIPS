@@ -26,45 +26,87 @@ class Hex:
         for binary in binaryList:
             type = self.guessTokenType(binary)
             aux = self.getAllTokens(type, binary) + "\n"
-            logI(f"Comando traduzido: \n{aux}")
             assembly += aux
-        return ".text:\n\nmain:\n" + self.treatAddresses(assembly)
+        logI(f"Assembly base: {assembly}")
+        aux = self.treatAddresses(assembly)
+
+        return ".text:\n\nmain:\n" + aux
 
     def treatAddresses(self, assembly:str) -> str:
         assembly = assembly.splitlines()
         for line in assembly:
-            logI(f"Commando de jump {line[0]} ou beq: {line[:4]}")
-            if line[-1] == ":":
-            if line[0] == 'j' or line[:4] == 'beq':
-                assembly = self.generateLabels(assembly, line, line[0])
-        logI(f"Assembly com labels: \n{assembly}")
-        return assembly
+            logI(f"Tratando linha: {line}")
+            if 'j' in line:
+                assembly = self.generateLabels(assembly, line, 'j')
+            elif 'beq' in line:
+                assembly = self.generateLabels(assembly, line, 'beq')
+        aux = ""
+        for line in assembly:
+            aux += line + "\n"
+        return aux
 
-    def generateLabels(self, assembly:list, line:str, type:str) -> str:
-        labelAddr = int(line[-1])
-        labelName = 'L' + str(len(self.labels))
-        assembly = self.__setLabel(assembly, line, labelAddr, labelName)
-        #list to str
-        codeLine = ""
-        for command in assembly:
-            codeLine += command + '\n'
-        return codeLine
+    def generateLabels(self, assembly:list, line:str, cType:str) -> list:
+        labelAddr = int(line.split()[-1])
+        logI(f"Endereço do label: {labelAddr}")
+        logI(f"Assembly: \n{assembly}")
 
+        if cType == 'beq':
+            index = assembly.index(line)
+            if ':' in assembly[index + labelAddr + 1]:
+                labelName = assembly[index+labelAddr+1].split()[0]
+                labelName = labelName[:-1]
+                logI(f"Label BEQ já existe: {assembly[index + labelAddr + 1]}")
+            else:
+                logI(f'Label BEQ não existe.')
+                labelName = 'L' + str(len(self.labels))
+            return self.__setLabel(assembly, line, labelAddr, labelName, 'beq')
 
-    def __setLabel(self, assembly:list, line:str, labelAddr:int, labelName:str) -> list:
+        elif cType == 'j':
+            if labelAddr < len(assembly):
+                if ':' in assembly[labelAddr]:
+                    labelName = assembly[labelAddr].split()[0]
+                    labelName = labelName[:-1]
+                    logI(f"Label J já existe: {assembly[labelAddr]}")
+                else:
+                    logI(f'Label J não existe.')
+                    labelName = 'L' + str(len(self.labels))
+            else:
+                assembly.append("")
+            labelName = 'L' + str(len(self.labels))
+            return self.__setLabel(assembly, line, labelAddr, labelName, 'j')
+        else:
+            raise Error(f"Tipo de jump não reconhecido: {cType}")
+    def __setLabel(self, assembly:list, line:str, labelAddr:int, labelName:str, cType:str) -> list:
+        logI(assembly)
+        logI(f"Tipo {type(assembly)} Linha: {line}")
         if labelName not in self.labels:
             self.labels.append(labelName)
-            logV(f"Label adicionada. ao array de labels. {labelName}")
-        else:
-            raise Error(f"Label {labelName} já existe.")
-        assembly[labelAddr] = f"{labelName}: \n {assembly[labelAddr]}"
-        for command in assembly:
-            if command == line:
-                command = command.split()
-                command[-1] = labelName
-                command = ' '.join(command)
+        index = 0
+        if cType == 'j':
+            logV("Tipo J encontrado!")
+            index = assembly.index(line)
+            line = line.split()
+            assembly[index] = f"{line[0]} {labelName}"    # Renomeando a linha
 
-        logI (f"Label {labelName} adicionada na linha: {assembly[labelAddr-1]}")
+            if labelName not in assembly[labelAddr]:
+                assembly[labelAddr] = f"{labelName}: {assembly[labelAddr]}" # adicionando o labelname no final da linha
+
+        elif cType == 'beq':
+            logV("Tipo BEQ encontrado!")
+            index = assembly.index(line)
+            line = line.split()
+            logI(f"1: {line[0]} | 2: {line[1]} | 3: {line[2]} | 4: {line[3]}")
+            if line[0] == 'beq':
+                assembly[index] = f"{line[0]} {line[1]} {line[2]} {labelName}"    # Renomeando a linha
+            else:
+                assembly[index] = f"{line[0]} {line[1]} {line[2]} {line[3]} {labelName}"
+
+            labelAddr = index+labelAddr+1
+            if labelName not in assembly[labelAddr]:
+                assembly[labelAddr] = f"{labelName}: {assembly[labelAddr]}" # adicionando o labelname no final da linha
+
+        else:
+            raise Error(f"Tipo de jump não reconhecido: {cType}")
         return assembly
 
 
@@ -247,6 +289,7 @@ class Hex:
         address = f"0000{address}00"
         logV(f"Endereço recebido: {address}")
         address = int(address, 2)
+        # TODO ARRUMAR ADDR
         address -= 4194304
         address //= 4
         return address

@@ -39,10 +39,14 @@ class Assembly:
 
     def generateBinary(self) -> str:
         binary = ""
+        index = 0
         for codeLine in self.assemblyCode:
+            index += 1
             tokens = self.tokenize(codeLine, echo=0)
             logV(f"Tokens: {tokens}")
-            binary += self.translateTokens(tokens)
+            if ":" in codeLine or "." in codeLine:
+                index -= 1
+            binary += self.translateTokens(tokens, index)
             binary += "\n"
         logV(f"Binary gerado: {binary}")
         return binary
@@ -73,7 +77,7 @@ class Assembly:
     def getHexaCode(self) -> list:
         return self.generateHexa()
 
-    def translateTokens(self, tokens: list) -> str:
+    def translateTokens(self, tokens: list, index:int) -> str:
         '''Peneira para as funções de tradução de tipos.'''
         opCodeToken = tokens[0]
         if opCodeToken[0] == '.':
@@ -93,7 +97,7 @@ class Assembly:
         if opCodeToken in ['or', 'and', 'sub']:
             return self.generateRType(tokens)
         if opCodeToken in ['lw', 'sw', 'beq', 'sltiu']:
-            return self.generateIType(tokens)
+            return self.generateIType(tokens, index)
         if opCodeToken in ['j']:
             return self.generateJType(tokens)
         else:
@@ -111,7 +115,7 @@ class Assembly:
         logV(f"Binary tipo R gerado: {binary}")
         return self.VerifyBinary(binary)
 
-    def generateIType(self, token: list) -> str:
+    def generateIType(self, token: list, index:int) -> str:
         '''[opCode]+[rs]+[rt]+[immediate]'''
         logV(f"Traduzindo I Type: {token}\n")
         binary = self.translateOpCode(str(token[0]))
@@ -124,7 +128,11 @@ class Assembly:
             rsToken, immediateToken = token[2], token[3]
             if token[0] == 'beq':
                 rsToken, rtToken = token[1], token[2]
-                immediateToken = self.countOperations(token)
+                immediateToken = self.countOperations(token, index)
+                binary += self.translateRegister(rsToken)
+                binary += self.translateRegister(rtToken)
+                binary += immediateToken
+                return self.VerifyBinary(binary)
             else:
                 rsToken, rtToken = token[2], token[1]
 
@@ -134,6 +142,7 @@ class Assembly:
         logV(f"Binary tipo I gerado: {binary}")
         return self.VerifyBinary(binary)
 
+    #TODO: arrumar pulos pro mesmo label
     def extractTokens(self, token: str) -> tuple:
         try:
             immediate = token.split('(')[0]
@@ -143,45 +152,27 @@ class Assembly:
         except IndexError:
             raise Error("Erro ao tentar extrair os tokens dentro e fora dos parênteses.")
 
-    def countOperations(self, token: list) -> int:
-        tokens = []
-        opCount = 0
-        beqLineNumber = 0
-        labelLineNumber = 0
+    def countOperations(self, token: list, index:int) -> int:
+        logV(f"Token: {token} Index: {index}")
 
-        logV(f"Token: {token}")
-        for line in self.assemblyCode:
-            tokenized = self.tokenize(line, echo=0)
-            if tokenized[0][0] != '.':
-                tokens.append(tokenized)
-
-        for t in tokens:
-            if (t[0][-1] != ':'):   # Contabilizo apenas as linhas que não são labels
-                opCount += 1
-            logV(f'Tokens novos: {t}')
-            if t == token and not beqLineNumber:
-                logV(f"Token encontrado: {t}. Valor: {opCount}")
-                beqLineNumber = opCount
-            logV(f"Token: {t[:-1]}, token: {token[-1]}")
-
-            if t[0][:-1] == token[-1] and not labelLineNumber:
-                logV(f"label encontrado: {token[-1]}. Valor: {opCount}")
-                labelLineNumber = opCount
-
-            if beqLineNumber and labelLineNumber:
-                logV("Tokens encontrados. Quebrando loop.")
-                logV("Retornando valor: " + str(labelLineNumber - beqLineNumber))
-                return (labelLineNumber - beqLineNumber)
-
-
-        raise Error(f"Token {token} não encontrado.")
+        Labeltoken = self.consultLabelAddress(token[-1])
+        Labeltoken -= 4194304
+        Labeltoken //= 4
+        immediate = Labeltoken - (index)
+        try:
+            if int(immediate) < 0:
+                logE(f"Passei aqui, immediate: {immediate}")
+                return self.TwoComplement(immediate)
+            immediate = int(immediate)
+        except ValueError:
+            raise Error(f"Label Immediate {immediate} não reconhecido.")
 
     def generateJType(self, token: list) -> str:
         '''[opCode]+[address]'''
         logV(f"Traduzindo J Type: {token}\n")
         opCode = self.translateOpCode(token[0])
         jumpAddress = self.getJumpAddress(token[1])
-        binary = opCode + jumpAddress
+        binary = f"{opCode}{jumpAddress}"
         logV(f"Binary tipo J gerado: {binary}")
         return self.VerifyBinary(binary)
 
@@ -191,6 +182,9 @@ class Assembly:
         return self.first26Bits(jumpAddr)
 
     def consultLabelAddress(self, label: str) -> int:
+        logI(f"Labels: {self.labels}")
+        if label not in self.labels:
+            raise Error(f"Label {label} não encontrado.")
         return self.labels[label]
 
     def appendShamt(self, shamtCode: str) -> str:

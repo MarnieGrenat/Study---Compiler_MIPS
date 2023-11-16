@@ -23,7 +23,7 @@ Para utilizar este script, siga as seguintes etapas:
 
 1. Existem dois diretórios essenciais na pasta principal do projeto: `./hexadecimal` e `./assembly`. Envie seu arquivo `.txt` para o diretório `./hexadecimal` e seu arquivo `.asm` para o diretório `./assembly`.
 
-2. Execute o script. Ele automatizará o processo de compilação e decompilação. Para os arquivos `.asm`, o script gerará o código hexadecimal no diretório `./hexadecimal`. Para os arquivos `.txt`, ele gerará o código assembly no diretório `./assembly`.
+2. Execute o script. Ele automatizará o processo de compilação e decompilação. Para os arquivos `.asm`, o script gerará o código hexadecimal no diretório `./hexadecimal`. Para os arquivos `.txt`, ele gerará o código assembly no diretório `./assembly`. Basta escolher a opção desejada no terminal.
 
 3. Não é necessário excluir os arquivos gerados anteriormente, pois o script fará comparações para determinar se a compilação ou decompilação é necessária.
 
@@ -41,6 +41,11 @@ Caso os arquivos .bat e .bash não estejam funcionais, é possível rodar o scri
 
 ## Observações
 - Mantenha nomes únicos e autodescritivos para seus arquivos. O script faz comparações com base nos nomes dos arquivos, portanto, isso é importante para evitar problemas de compilação.
+
+## Limitações da aplicação:
+- O Assembler não aceita duas instruções exatamente iguais. Todas instruções devem ter alguma diferença entre si.
+- O Assembler não compila linhas com label ao lado. Labels devem estar em linhas separadas
+- O Assembler não suporta tradução de dois ou mais labels sequenciais, quando o primeiro é vazio.
 
 ## Licença
 Este projeto é distribuído sob a Licença Apache. Consulte o arquivo LICENSE para obter mais informações

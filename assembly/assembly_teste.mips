@@ -13,7 +13,7 @@ main:
        	j loop                # Jump to loop
 
 label:
-    # Some instructions here
+        lw $t6, 0($t7)        # Load Word
 
 loop:
 	beq $t8, $t9, label # Branch if Equal

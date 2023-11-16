@@ -19,18 +19,18 @@ class File():
 
 	def saveBinaryFile(self) -> None:
 		path = join(r"binary", self.name)
-		with open((path[:-4]+"bin"), "w") as file:
+		with open((path[:-5]+".bin"), "w") as file:
 			file.write(self.assembly.getBinaryCode())
 
 	def saveHexFile(self) -> None:
 		path = join(r"hexadecimal", self.name)
-		with open((path[:-4]+"txt"), "w") as file:
+		with open((path[:-5]+".txt"), "w") as file:
 			file.write(self.hexa)
 		#self.saveBinaryFile()
 
 	def saveAssemblyFile(self) -> None:
 		path = join("assembly", self.name)
-		with open(path[:-3]+'.mips', "w") as file:
+		with open(path[:-4]+'.mips', "w") as file:
 			file.write(self.assembly)
 
 
@@ -41,12 +41,6 @@ class File():
 	def getHexaContent(self) -> list:
 		path = join(r"hexadecimal", self.name)
 		return self.readContent(path)
-
-	# def concatCode(self, codeList:list) -> str:
-	# 	code = ""
-	# 	for line in codeList:
-	# 		code += line + "\n"
-	# 	return code
 
 	def readContent(self, path: str) -> list:
 		# path = join(path, self.name)

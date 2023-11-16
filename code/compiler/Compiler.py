@@ -9,9 +9,9 @@ def generateHexadecimalIfNecessary() -> int:
     assemblyFileNames = getListOfFiles(assemblyDir)
     hexFileNames = getListOfFiles(hexaDir)
     count = 0
-    for fileName in assemblyFileNames:
-        if fileName[:-5] not in hexFileNames[:-4]: #TODO retirar tipo de arquivo do nome
-            newHexFile = File(fileName, 'a2h')
+    for AFileName in assemblyFileNames:
+        if AFileName[:-4] not in hexFileNames[:-3]: #TODO retirar tipo de arquivo do nome
+            newHexFile = File(AFileName, 'a2h')
             newHexFile.saveHexFile()
             count += 1
     return count
@@ -24,9 +24,9 @@ def generateAssemblyIfNecessary() -> int:
     hexFileNames = getListOfFiles(hexaDir)
 
     count = 0
-    for fileName in hexFileNames:
-        if fileName[:-4] not in assemblyFileNames[:-5]: #TODO retirar tipo de arquivo do nome
-            newAssemblyFile = File(fileName, 'h2a')
+    for hexFileName in hexFileNames:
+        if hexFileName[:-3] not in assemblyFileNames[:-4]: #TODO retirar tipo de arquivo do nome
+            newAssemblyFile = File(hexFileName, 'h2a')
             newAssemblyFile.saveAssemblyFile()
             count += 1
     return count

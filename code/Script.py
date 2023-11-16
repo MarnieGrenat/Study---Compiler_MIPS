@@ -10,13 +10,13 @@ O único arquivo que o usuário precisa rodar é esse, Script.py.
 
 
 def main() -> None:
-	# countGeneratedHexadecimal = c.generateHexadecimalIfNecessary()
-	countGeneratedAssembly = c.generateAssemblyIfNecessary()
-	# c.printLogInformationOnTerminal(countGeneratedHexadecimal, countGeneratedAssembly)
-
-
+	t = input("Digite 1 para gerar arquivos assembly a partir de arquivos em hexadecimal ou 2 para gerar arquivos em hexadecimal a partir de arquivos assembly: ")
+	if (str(t) == "1"):
+		c.generateAssemblyIfNecessary()
+	elif (str(t) == "2"):
+		c.generateHexadecimalIfNecessary()
+	else:
+		print("Opção inválida. Tente novamente.")
 # Execução do programa
 if (__name__ == '__main__'):
 	main()
-
-#00000100000000000000000111
