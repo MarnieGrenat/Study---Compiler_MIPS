@@ -1,20 +1,15 @@
-# Arquivo de teste
-.text
+.text:
+
 main:
-        # R Type
-        or $t0, $zero, $t1     # Bitwise OR
-        and $t2, $t0, $t3     # Bitwise AND
-        sub $t4, $t2, $t1     # Subtract
-        # I Type
-        sltiu $t5, $t4, 10    # Set on Less Than Immediate Unsigned
-        lw $t6, 0($t7)        # Load Word
-        sw $t8, 4($t9)        # Store Word
-        # J Type
-       	j loop                # Jump to loop
-
-label:
-        lw $t6, 0($t7)        # Load Word
-
-loop:
-	beq $t8, $t9, label # Branch if Equal
-    # Some instructions here
+or $8, $0, $9
+beq $15, $25, L0
+and $10, $8, $11
+sub $12, $10, $9
+sltiu $13, $12, 10
+lw $14, 0($15)
+sw $24, 4($25)
+j L1
+L0:
+lw $14, 0($15)
+L1:
+beq $24, $25, L0

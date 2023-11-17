@@ -23,7 +23,7 @@ Para utilizar este script, siga as seguintes etapas:
 
 1. Existem dois diretórios essenciais na pasta principal do projeto: `./hexadecimal` e `./assembly`. Envie seu arquivo `.txt` para o diretório `./hexadecimal` e seu arquivo `.asm` para o diretório `./assembly`.
 
-2. Execute o script. Ele automatizará o processo de compilação e decompilação. Para os arquivos `.asm`, o script gerará o código hexadecimal no diretório `./hexadecimal`. Para os arquivos `.txt`, ele gerará o código assembly no diretório `./assembly`. Basta escolher a opção desejada no terminal.
+2. Execute o script. Ele automatizará o processo de compilação e decompilação. Para os arquivos `.mips`, o script gerará o código hexadecimal no diretório `./hexadecimal`. Para os arquivos `.txt`, ele gerará o código assembly no diretório `./assembly`. Basta escolher a opção desejada no terminal.
 
 3. Não é necessário excluir os arquivos gerados anteriormente, pois o script fará comparações para determinar se a compilação ou decompilação é necessária.
 

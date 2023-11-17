@@ -129,9 +129,12 @@ class Assembly:
             if token[0] == 'beq':
                 rsToken, rtToken = token[1], token[2]
                 immediateToken = self.countOperations(token, index)
-                binary += self.translateRegister(rsToken)
-                binary += self.translateRegister(rtToken)
-                binary += immediateToken
+                opCode = self.translateOpCode(str(token[0]))
+                rs = self.translateRegister(rsToken)
+                rt = self.translateRegister(rtToken)
+
+                binary = f"{opCode}{rs}{rt}{immediateToken}"
+                logI(f"Binary tipo I gerado:\n{opCode} {rs} {rt} {immediateToken}")
                 return self.VerifyBinary(binary)
             else:
                 rsToken, rtToken = token[2], token[1]
@@ -142,7 +145,6 @@ class Assembly:
         logV(f"Binary tipo I gerado: {binary}")
         return self.VerifyBinary(binary)
 
-    #TODO: arrumar pulos pro mesmo label
     def extractTokens(self, token: str) -> tuple:
         try:
             immediate = token.split('(')[0]
@@ -152,20 +154,21 @@ class Assembly:
         except IndexError:
             raise Error("Erro ao tentar extrair os tokens dentro e fora dos parênteses.")
 
-    def countOperations(self, token: list, index:int) -> int:
+    def countOperations(self, token: list, index:int) -> str:
         logV(f"Token: {token} Index: {index}")
 
         Labeltoken = self.consultLabelAddress(token[-1])
         Labeltoken -= 4194304
         Labeltoken //= 4
+        logV(f"Labeltoken: {Labeltoken}, index: {index}")
         immediate = Labeltoken - (index)
         try:
             if int(immediate) < 0:
                 logE(f"Passei aqui, immediate: {immediate}")
                 return self.TwoComplement(immediate)
-            immediate = int(immediate)
         except ValueError:
             raise Error(f"Label Immediate {immediate} não reconhecido.")
+        return self.first16Bits(bin(immediate))
 
     def generateJType(self, token: list) -> str:
         '''[opCode]+[address]'''
@@ -240,9 +243,10 @@ class Assembly:
 
         immediateBin = ''
         immediate = bin(immediate)[2:].zfill(16)
+        logI("Complemento de dois encontrado. Invertendo bits. \n {immediate}")
 
-        for b in immediate:
-            if b == "0":
+        for bit in immediate:
+            if bit == "0":
                 immediateBin += "1"
             else:
                 immediateBin += "0"
