@@ -1,26 +1,19 @@
-from compiler.dependencies.Error import Error
-from compiler.dependencies.Debugger import logE, logW, logI, logD, logV
+from dependencies.Error import Error
+from dependencies.Debugger import logE, logW, logI, logD, logV
+from dcompiler.Binary import Binary
 
 
 class Hex:
-    def __init__(self, hexCode: str) -> None:
-        self.hexCode = hexCode
+    def __init__(self, file: str) -> None:
+        self.hexCode = file
         self.labels = []
-        self.binaryCode = self.generateBinary(self.hexCode)
-        self.assembly = self.generateAssembly(self.binaryCode)
+        self.binaryCode = Binary.GenerateBinary(self.hexCode)
+        self.assembly = self.GenerateAssembly(self.binaryCode)
 
-    def generateBinary(self, hexCode) -> list:
-        binary = []
-        for hexLine in hexCode:
-            binary.append(self.formatBinary(hexLine))
-        return binary
+    def Compile(self) -> str:
+        return self.getAssemblyCode()
 
-    def formatBinary(self, line: str) -> str:
-        line = bin(int(line, 16))
-        line = line[2:].zfill(32)
-        return str(line)
-
-    def generateAssembly(self, binaryList:list) -> str:
+    def GenerateAssembly(self, binaryList:list) -> str:
         ## TODO: Tratar sinal de Jump ou BEQ
         assembly = ""
         for binary in binaryList:
@@ -108,7 +101,6 @@ class Hex:
         else:
             raise Error(f"Tipo de jump não reconhecido: {cType}")
         return assembly
-
 
     def guessTokenType(self, binary: str) -> str:
         token = binary[0:6]
