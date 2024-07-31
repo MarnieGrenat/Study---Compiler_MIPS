@@ -9,18 +9,18 @@ class Compiler:
         '''Assembly to Hexadecimal'''
         counter = 0
         asmFiles = GetListOfFiles(path, r'assembly')
-        for file in asmFiles:
-            assembly = Assembly(file.Content())
-            file.Save(assembly.CompileCode())
+        for doc in asmFiles:
+            asm = Assembly(doc.Content, doc.Name)
+            Save(asm.Compile(), (path + '/' + asm.fileName + '.txt'))
             counter += 1
         return counter
 
     def GenerateAssembly(path: str) -> int:
         '''Hexadecimal to Assembly'''
         counter = 0
-        hexFiles = GetListOfFiles(path, r'assembly')
-        for file in hexFiles:
-            hexadecimal = Hex(file.Content())
-            file.Save(hexadecimal.DecompileCode())
+        hexFiles = GetListOfFiles(path, r'hexadecimal')
+        for doc in hexFiles:
+            hex = Hex(doc.Content)
+            Save(hex.Decompile(), (path + '/' + hex.fileName + '.asm'))
             counter += 1
         return counter

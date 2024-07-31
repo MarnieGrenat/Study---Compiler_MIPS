@@ -4,27 +4,22 @@ from dependencies.Debugger import logE, logW, logI, logD, logV
 import os
 class File():
 	def __init__(self, FilePath: str) -> None:
-		self.Name, self.FileExtension = self.StripFileExtension(FilePath)
-		self.Path = FilePath
-		self.Content = self.readContent()
-
-	def Save(self, code: str) -> None:
-		path = os.path.join(self.Path, self.Name)
-		with open((path + self.FileExtension), 'w') as File:
-			File.write(self.ProcessedCode)
+		self.Name, self.FileExtension = os.path.splitext(FilePath)
+		self.FilePath = FilePath
+		self.Content: list = self.readContent()
+		logI(f'Name={self.Name} : FileExtension={self.FileExtension} : Path={self.FilePath} : Content={self.Content}')
 
 	def GetContent(self) -> list:
-		return self.readContent(os.path.join(self.Path, self.Name))
+		return self.readContent(os.path.join(self.FilePath, self.Name))
 
 	def readContent(self) -> list:
+		content = []
 		try:
-			logI(f"Existe arquivo no path! Lendo arquivo com PATH: {self.Path}")
-			with open((self.Path), "r") as file:
-				content = file.readlines()
-				return self.ProcessFile(content)
+			with open(self.FilePath, "r") as f:
+				content = self.ProcessFile(f.readlines())
 		except IOError:
-			logI(f"Arquivo não existente. Enviando conteúdo vazio. PATH: {self.Path}")
-			return []
+			logE(f"Arquivo não existente. Enviando conteúdo vazio. PATH: {self.FilePath}")
+		return content
 
 	def ProcessFile(self, code) -> list:
 		'''Process text into codelines'''
@@ -35,14 +30,14 @@ class File():
 				cleanedCode.append(codeLine)
 		return cleanedCode
 
-	def StripFileExtension(self, fileName: str) -> str:
-		return fileName.rstrip('.'), fileName.lstrip('.')
+def Save(code: str, path: str) -> None:
+	with open(path, 'w') as f:
+		f.write(code)
 
 def GetListOfFiles(path: str, dir: str) -> list:
 	files = []
 	path = os.path.join(path, dir)
 	for fileName in os.listdir(path):
-		print(fileName)
-		document = File(fileName)
+		document = File( path + '/' + fileName) # os.path.join(path, fileName))
 		files.append(document)
 	return files

@@ -1,7 +1,8 @@
 from dependencies.Error import Error
 from dependencies.Debugger import logE, logW, logI, logD, logV
 class Assembly:
-    def __init__(self, assemblyCode: str) -> None:
+    def __init__(self, assemblyCode: str, fileName: str = 'asm_output') -> None:
+        self.fileName = fileName
         self.assemblyCode = assemblyCode
         self.labels = self.findAllLabels()
         self.binaryCode = self.generateBinary()
@@ -65,9 +66,9 @@ class Assembly:
 
     ### GETTERS ###
 
-    def CompileCode(self) -> str:
+    def Compile(self) -> str:
         codeInString = ""
-        for code in self.HexCode:
+        for code in self.hexCode:
             codeInString += code
         return codeInString
 

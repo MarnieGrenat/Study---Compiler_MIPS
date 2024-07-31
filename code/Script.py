@@ -9,9 +9,9 @@ O único arquivo que o usuário precisa rodar é esse, Script.py.
 def main() -> None:
 	UserInput = str(input("Digite 1 para gerar arquivos assembly a partir de arquivos em hexadecimal ou 2 para gerar arquivos em hexadecimal a partir de arquivos assembly: "))
 	if (UserInput == "1"):
-		Compiler.GenerateAssembly(r'test/')
+		Compiler.GenerateAss1embly(r'../test/')
 	elif (UserInput == "2"):
-		Compiler.GenerateHexadecimal(r'test/')
+		Compiler.GenerateHexadecimal(r'../test/')
 	else:
 		print("Opção inválida. Tente novamente.")
 

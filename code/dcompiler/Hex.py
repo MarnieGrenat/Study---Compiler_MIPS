@@ -1,16 +1,19 @@
 from dependencies.Error import Error
 from dependencies.Debugger import logE, logW, logI, logD, logV
-from dcompiler.Binary import Binary
+from dcompiler.Binary import *
 
 
 class Hex:
-    def __init__(self, file: str) -> None:
-        self.hexCode = file
+    def __init__(self, code: str, fileName: str = 'hex_output') -> None:
+        self.fileName = fileName
+        self.hexCode = code
         self.labels = []
-        self.binaryCode = Binary.GenerateBinary(self.hexCode)
+        self.binaryCode = GenerateBinary(self.hexCode)
         self.assembly = self.GenerateAssembly(self.binaryCode)
 
-    def Compile(self) -> str:
+
+
+    def Decompile(self) -> str:
         return self.getAssemblyCode()
 
     def GenerateAssembly(self, binaryList:list) -> str:
